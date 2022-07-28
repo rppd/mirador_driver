@@ -5,6 +5,7 @@
 // Standard
 #include <string>
 #include <cmath>
+#include <Eigen/Dense>
 
 // Custom ROS messages
 #include "mirador_driver/GeoPose.h"
@@ -19,6 +20,7 @@
 #include <std_msgs/Float64.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/QuaternionStamped.h>
 #include <geographic_msgs/GeoPoint.h>
@@ -44,7 +46,7 @@ class MiradorDriver
 
         // -------------------- Callbacks --------------------
 
-        // Message containing mission sent from Mirador Terminal
+        // Message containing mission sent from Mirador HMI
         void missionCallback(const mirador_driver::Mission& _mission);
         // Message containing mission report sent from anyone
         void reportCallback(const mirador_driver::Report& _report);
@@ -73,24 +75,26 @@ class MiradorDriver
 
         // -------------------- Functions --------------------
 
-        // Build next goal on the list and set it, "first" is a flag to specify the goal setted is the first of the ro.
+        // Perform guide mode: Go strait to the point, stop when range is acceptable
+        bool setGuide();
+        // Build next goal on the list and set it, "first" flag specify the goal setted is the first in the queue
         bool setNextGoal(const bool& _first);
-        // Build next goal
-        void buildNextGoal();
-        // Publish next goal
-        void startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose);
-
+        // Start action move base goal with the specified target pose
+        bool startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose);
+        // Simply publish Mirador status message
         void publishStatus();
+
+        void publishCmdVel();
         
-        geometry_msgs::PoseStamped getTargetPose(const geographic_msgs::GeoPoint& _geo_point);
+        bool getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose);
 
-        geometry_msgs::PointStamped latLongToUtm(const geographic_msgs::GeoPoint& _geo_point);
+        void latLongToUtm(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PointStamped& utm_point);
         
-        geographic_msgs::GeoPoint utmToLatLong(const geometry_msgs::PointStamped& _utm_point);
+        void utmToLatLong(const geometry_msgs::PointStamped& _utm_point, geographic_msgs::GeoPoint& geo_point);
 
-        geometry_msgs::PointStamped utmToOdom(const geometry_msgs::PointStamped& _utm_point);
+        bool utmToOdom(const geometry_msgs::PointStamped& _utm_point, geometry_msgs::PointStamped& odom_point);
 
-        geometry_msgs::PointStamped odomToUtm(const geometry_msgs::PointStamped& _odom_point);
+        bool odomToUtm(const geometry_msgs::PointStamped& _odom_point, geometry_msgs::PointStamped& utm_point);
 
     private:
         // Subscribers
@@ -113,6 +117,7 @@ class MiradorDriver
         
         // Publishers
         ros::Publisher m_statusPublisher;
+        ros::Publisher m_cmdVelPublisher;
 
         // tf Listener
         tf2_ros::Buffer m_tf2_buffer;
@@ -149,6 +154,8 @@ class MiradorDriver
         ros::Time m_last_time;
         geographic_msgs::GeoPoint m_position;
         double m_heading;
+        bool m_publish_cmd_vel;
+        geometry_msgs::Twist m_cmd_vel;
         int m_mode;
         int m_flight_status;
         float m_camera_elevation;
