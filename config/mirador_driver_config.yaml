@@ -1,0 +1,16 @@
+is_orientation_ned: false # Compass convention (NED / ENU): 0 for North with NED and 0 for East with ENU. Basically ROS compass value is ENU.
+is_zero_altitude: false # Use for ground vehicle
+# utm_zone: "31n" # Specify UTM zone of robot usage. 31n for Paris per example.
+utm_frame_id: "utm"
+odom_frame_id: "odom"
+base_link_frame_id: "base_link"
+navsatfix_topic: "/fix"
+use_odometry: false # Specify if you prefer imu or odometry compass for yaw information.
+imu_topic: "/imu"
+odometry_topic: "/odometry"
+flight_status_topic: "/flight_status"
+camera_elevation_topic: "/camera_elevation"
+camera_zoom_topic: "/camera_zoom"
+e_stop_topic: "/e_stop"
+stream_method: 0 # 0 for URL video stream method, 1 for WebRTC method
+m_stream_address: [] # Specify stream URL address in case of stream method 0. Parameter stream_method must be 0

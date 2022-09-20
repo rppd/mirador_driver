@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+
+<launch>
+    <node pkg="mirador_driver" type="mirador_driver" name="mirador_driver">
+        <rosparam command="load" file="$(find mirador_driver)/config/mirador_driver_config.yaml" />
+    </node>
+</launch>
