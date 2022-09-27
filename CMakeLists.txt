@@ -125,8 +125,6 @@ catkin_package(
   DEPENDS GeographicLib
 )
 
-find_package(Boost REQUIRED COMPONENTS system)
-
 ###########
 ## Build ##
 ###########
@@ -172,30 +170,9 @@ target_link_libraries(${PROJECT_NAME}
   ${Boost_LIBRARIES}
 )
 
-string(ASCII 27 ESCAPE)
-add_custom_command(
-  OUTPUT message
-  COMMAND sudo -n sh -c 'cd ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_BIN_DESTINATION}\; chown root.root ${PROJECT_NAME}\; chmod 4755 ${PROJECT_NAME}' || (echo "${ESCAPE}[34m#\ type\ following\ command\ before\ execute\ ${PROJECT_NAME}...\ sudo\ chown\ root.root\ ./bin/${PROJECT_NAME}\;\ sudo\ chmod 4755\ ./bin/${PROJECT_NAME}${ESCAPE}[0m")
-  DEPENDS bin/${PROJECT_NAME})
-add_custom_target(message_all ALL DEPENDS message)
-
 #############
 ## Install ##
 #############
-
-install(
-  PROGRAMS ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_BIN_DESTINATION}/${PROJECT_NAME}
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE SETUID
-)
-install(CODE
-  "execute_process(COMMAND sudo -n sh -c \"cd \$ENV{DESTDIR}/${CMAKE_INSTALL_PREFIX}/${CATKIN_PACKAGE_BIN_DESTINATION} && chown root.root ${PROJECT_NAME} && ls -al ${PROJECT_NAME} && chmod 4755 ${PROJECT_NAME} && ls -al ${PROJECT_NAME}\")
-")
-
-install(DIRECTORY test
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-  USE_SOURCE_PERMISSIONS
-)
 
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html

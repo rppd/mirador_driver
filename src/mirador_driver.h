@@ -4,8 +4,16 @@
 
 // Standard
 #include <string>
+#include <math.h>
+
+// Custom ROS messages
+#include "mirador_driver/GeoPose.h"
+#include "mirador_driver/Mission.h"
+#include "mirador_driver/Report.h"
+#include "mirador_driver/Status.h"
 
 // ROS
+#include <std_msgs/Time.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Int8.h>
 #include <std_msgs/Float32.h>
@@ -18,10 +26,6 @@
 #include <sensor_msgs/Imu.h>
 #include <nav_msgs/Odometry.h>
 #include <move_base_msgs/MoveBaseAction.h>
-#include <mirador_driver/GeoPose.h>
-#include <mirador_driver/Mission.h>
-#include <mirador_driver/Report.h>
-#include <mirador_driver/Status.h>
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
 #include <tf2_ros/transform_listener.h>
@@ -49,6 +53,8 @@ class MiradorDriver
         // Stop mission and reset parameters
         void abortMissionCallback(const std_msgs::Empty& _empty);
 
+        void heartbeatCallback(const std_msgs::Time& _time);
+
         void navSatFixCallback(const sensor_msgs::NavSatFix& _navsatfix);
 
         void imuCallback(const sensor_msgs::Imu& _imu);
@@ -72,7 +78,7 @@ class MiradorDriver
         // Publish next goal
         void startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose);
 
-        void publishStatus(const float _delay);
+        void publishStatus();
         
         geometry_msgs::PoseStamped getTargetPose(const geographic_msgs::GeoPoint& _geo_point);
 
@@ -90,6 +96,7 @@ class MiradorDriver
         ros::Subscriber m_reportSubscriber;
         ros::Subscriber m_abortMissionSubscriber;
         ros::Subscriber m_launchMissionSubscriber;
+        ros::Subscriber m_heartbeatSubscriber;
         ros::Subscriber m_navsatfixSubscriber;
         ros::Subscriber m_imuSubscriber;
         ros::Subscriber m_odometrySubscriber;
@@ -113,6 +120,7 @@ class MiradorDriver
         std::string m_utm_frame_id;
         std::string m_odom_frame_id;
         std::string m_base_link_frame_id;
+        std::string m_heartbeat_topic;
         std::string m_navsatfix_topic;
         bool m_use_odometry;
         std::string m_imu_topic;
@@ -133,6 +141,7 @@ class MiradorDriver
         mirador_driver::Report m_report;
         int m_sequence;
         int m_signal_quality;
+        ros::Time m_last_time;
         geographic_msgs::GeoPoint m_position;
         double m_orientation;
         int m_mode;

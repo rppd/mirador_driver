@@ -13,6 +13,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     std::string utm_grid_zone;
     private_n.param<std::string>("utm_zone", utm_grid_zone, "31n");
     GeographicLib::UTMUPS::DecodeZone(utm_grid_zone, m_utm_zone, m_is_north_hemisphere);
+    private_n.param<std::string>("heartbeat_topic", m_heartbeat_topic, "/heartbeat");
     private_n.param<std::string>("navsatfix_topic", m_navsatfix_topic, "/fix");
     if (m_use_odometry) {
         private_n.param<std::string>("odometry_topic", m_odometry_topic, "/odometry");
@@ -32,6 +33,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     m_launchMissionSubscriber = n.subscribe("/mirador/launch", 10, &MiradorDriver::launchMissionCallback, this);
     m_abortMissionSubscriber = n.subscribe("/mirador/abort", 10, &MiradorDriver::abortMissionCallback, this);
     m_reportSubscriber = n.subscribe("/mirador/report", 10, &MiradorDriver::reportCallback, this);
+    m_heartbeatSubscriber = n.subscribe(m_heartbeat_topic, 10, &MiradorDriver::heartbeatCallback, this);
     m_navsatfixSubscriber = n.subscribe(m_navsatfix_topic, 10, &MiradorDriver::navSatFixCallback, this);
     if (m_use_odometry) {
         m_odometrySubscriber = n.subscribe(m_odometry_topic, 10, &MiradorDriver::odometryCallback, this);
@@ -113,6 +115,13 @@ void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
     }
 }
 
+void MiradorDriver::heartbeatCallback(const std_msgs::Time& _time)
+{
+    m_last_time = ros::Time(0);
+    ros::Duration delay = m_last_time - _time.data;
+    m_signal_quality = round(100 * exp(-10 * delay.toSec())); // Convert delay in seconds into a percentage
+}
+
 void MiradorDriver::navSatFixCallback(const sensor_msgs::NavSatFix& _navsatfix)
 {
     m_position.latitude = _navsatfix.latitude;
@@ -187,11 +196,16 @@ void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
 
 // -------------------- Publishers --------------------
 
-void MiradorDriver::publishStatus(const float _delay)
+void MiradorDriver::publishStatus()
 {
     mirador_driver::Status status;
 
-    status.signal_quality = _delay;
+    if ((ros::Time(0) - m_last_time).toSec() > 1.0) {
+        status.signal_quality = 0;
+    }
+    else {
+        status.signal_quality = m_signal_quality;
+    }
     status.pose.latitude = m_position.latitude;
     status.pose.longitude = m_position.longitude;
     status.pose.altitude = m_position.altitude;
