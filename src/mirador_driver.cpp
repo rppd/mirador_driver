@@ -13,7 +13,8 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     std::string utm_grid_zone;
     private_n.param<std::string>("utm_zone", utm_grid_zone, "31n");
     GeographicLib::UTMUPS::DecodeZone(utm_grid_zone, m_utm_zone, m_is_north_hemisphere);
-    private_n.param<std::string>("heartbeat_topic", m_heartbeat_topic, "/heartbeat");
+    private_n.param<std::string>("ping_topic", m_ping_topic, "/ping");
+    private_n.param<std::string>("stateOf_charge_topic", m_state_of_charge_topic, "/state_of_charge");
     private_n.param<std::string>("navsatfix_topic", m_navsatfix_topic, "/fix");
     if (m_use_odometry) {
         private_n.param<std::string>("odometry_topic", m_odometry_topic, "/odometry");
@@ -33,7 +34,8 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     m_launchMissionSubscriber = n.subscribe("/mirador/launch", 10, &MiradorDriver::launchMissionCallback, this);
     m_abortMissionSubscriber = n.subscribe("/mirador/abort", 10, &MiradorDriver::abortMissionCallback, this);
     m_reportSubscriber = n.subscribe("/mirador/report", 10, &MiradorDriver::reportCallback, this);
-    m_heartbeatSubscriber = n.subscribe(m_heartbeat_topic, 10, &MiradorDriver::heartbeatCallback, this);
+    m_pingSubscriber = n.subscribe(m_ping_topic, 10, &MiradorDriver::pingCallback, this);
+    m_stateOfChargeSubscriber = n.subscribe(m_state_of_charge_topic, 10, &MiradorDriver::stateOfChargeCallback, this);
     m_navsatfixSubscriber = n.subscribe(m_navsatfix_topic, 10, &MiradorDriver::navSatFixCallback, this);
     if (m_use_odometry) {
         m_odometrySubscriber = n.subscribe(m_odometry_topic, 10, &MiradorDriver::odometryCallback, this);
@@ -58,7 +60,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     m_mode = 0;
     m_mission_id = "";
     m_is_running = false;
-    m_battery_charge = 0;
+    m_state_of_charge = 0;
     m_flight_status = 0;
     m_camera_elevation = .0;
     m_camera_zoom = 0;
@@ -115,11 +117,20 @@ void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
     }
 }
 
-void MiradorDriver::heartbeatCallback(const std_msgs::Time& _time)
+void MiradorDriver::pingCallback(const std_msgs::Float64& _delay)
 {
-    m_last_time = ros::Time(0);
-    ros::Duration delay = m_last_time - _time.data;
-    m_signal_quality = round(100 * exp(-10 * delay.toSec())); // Convert delay in seconds into a percentage
+    if (_delay.data < 0) {
+        m_signal_quality = 0;
+    }
+    else {
+        m_signal_quality = round(100 * exp(-_delay.data / 100)); // Convert delay in milliseconds into a percentage
+    }
+    
+}
+
+void MiradorDriver::stateOfChargeCallback(const std_msgs::Float32& _soc)
+{
+    m_state_of_charge = std::min(std::max(int(round(_soc.data)), 0), 100);
 }
 
 void MiradorDriver::navSatFixCallback(const sensor_msgs::NavSatFix& _navsatfix)
@@ -213,7 +224,7 @@ void MiradorDriver::publishStatus()
     status.mode = m_mode;
     status.mission_id = m_mission_id;
     status.is_running = m_is_running;
-    status.battery_charge = m_battery_charge;
+    status.state_of_charge = m_state_of_charge;
     status.flight_status = m_flight_status;
     status.camera_elevation = m_camera_elevation;
     status.camera_zoom = m_camera_zoom;

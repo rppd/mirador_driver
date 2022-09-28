@@ -4,4 +4,9 @@
     <node pkg="mirador_driver" type="mirador_driver" name="mirador_driver">
         <rosparam command="load" file="$(find mirador_driver)/config/mirador_driver_config.yaml" />
     </node>
+
+    <node pkg="rosping" type="rosping" name="rosping" args="11.0.0.1">
+        <rosparam command="load" file="$(find mirador_driver)/config/rosping_config.yaml" />
+        <remap from="ping/delay" to="ping"/>
+    </node>
 </launch>

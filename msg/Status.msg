@@ -16,7 +16,7 @@ mirador_driver/GeoPose pose
 uint8 mode
 string mission_id
 bool is_running
-uint8 battery_charge
+uint8 state_of_charge
 uint8 flight_status
 float32 camera_elevation
 uint8 camera_zoom

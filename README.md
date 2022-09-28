@@ -1,7 +1,25 @@
 # Mirador Driver
-Mirader ROS driver for bridging ROS robot metadata with Mirador HMI
+Mirader ROS driver for bridging ROS robot metadata with **Mirador HMI**
 
 ## mirador_driver
+
+This package is a driver that aim to link [**Mirador**](https://github.com/julesberhault/mirador), (Mirador Human-Machine Interface) with ROS. It makes a bridge between ROS topics and JavaScript executing on the HMI web page. The data collected are then displayed on the interface and users can communicate with their robot simply and remotely through a web navigator. Web server is a nodejs server, it rely on socket.io communications to link web pages and share data synchronously.
+
+### Compiling
+
+Compile package:
+
+```bash
+catkin_make mirador_driver
+```
+
+### Running
+
+Run node with rosrun:
+
+```bash
+rosrun mirador_driver mirador_driver
+```
 
 ### Parameters
 
@@ -13,6 +31,8 @@ Mirader ROS driver for bridging ROS robot metadata with Mirador HMI
 | utm_frame_id | "utm" |  |
 | odom_frame_id | "odom" |  |
 | base_link_frame_id | "base_link" |  |
+| ping_topic | "/ping" | Ping or delay topic name used to estimate quality of signal |
+| state_of_charge_topic | "/state_of_charge" | State of battery charge topic name |
 | navsatfix_topic | "/fix" |  |
 | use_odometry | false | Specify if you prefer imu or odometry compass for yaw information. |
 | imu_topic | "/imu" |  |
@@ -39,18 +59,47 @@ Mirader ROS driver for bridging ROS robot metadata with Mirador HMI
 
 | Default value | Message type | Desciption |
 | --- | --- | --- |
-| /fix | sensor_msgs/NavSatFix |  |
-| /imu | sensor_msgs/Imu |  |
-| /odometry | nav_msgs/Odometry|  |
-| /flight_status | std_msgs/Float32 |  |
-| /camera_elevation | std_msgs/Float32 |  |
-| /camera_zoom | std_msgs/Int8 |  |
-| /e_stop | std_msgs/Bool | Emergency stop indicator |
+| /ping | std_msgs/Float64 | Ping or delay time in ms used to estimate quality of the signal |
+| /state_of_charge | std_msgs/Float32 | State of the battery charge of the robot, value must be between 0.0 and 100.0 |
+| /fix | sensor_msgs/NavSatFix | GPS or GNSS data, latitude, longitude. Use parameter ***zero_altitude*** setted to **false** to keep altitude value |
+| /imu | sensor_msgs/Imu | IMU data used to get orientation. ENU cnvention is used by default. Use parameter ***is_orientation_ned*** to use NED convention |
+| /odometry | nav_msgs/Odometry| Odometry data used to get orientation if parameter ***use_odometry*** is setted to **true** |
+| /flight_status | std_msgs/Float32 | **LANDED** = 0, **TAKING_OFF** = 1, **FLYING** = 2, **LANDING** = 3 |
+| /camera_elevation | std_msgs/Float32 | Value of camera orientation applied, horizontal direction is 0, vertical down direction is -90° |
+| /camera_zoom | std_msgs/Int8 | Value of camera zoom applied, default value is 1 |
+| /e_stop | std_msgs/Bool | Emergency stop indicator. Setted to **true** mean that emergency stop is currently applied |
 
 ### Publishers
 
-#### Mirador HMI side (Mirador standardized, then computed with JavaScript with roslibjs)
+#### Mirador HMI side (Mirador standardized, then computed with JavaScript with [roslibjs](https://github.com/RobotWebTools/roslibjs))
 
 | Default value | Message type | Desciption |
 | --- | --- | --- |
 | /mirador/status | mirador_msgs/Status |  |
+
+## rosping
+
+This package is used to get ping (delay in ms) with the robot
+
+### Compiling
+
+Compile package as **sudo**:
+
+```bash
+sudo rosping rosping
+```
+
+### Running
+
+Run node with rosrun:
+
+```bash
+rosrun rosping rosping HOSTNAME
+```
+with **HOSTNAME** the IP address or hostname you wish to ping
+
+### Parameters
+
+| Name | Default value | Description |
+| --- | --- | --- |
+| rate | 10 | Frequency for publishing message. 10 is for pûblishing every 10s (0.1 Hz) |

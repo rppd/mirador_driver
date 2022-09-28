@@ -1,11 +1,10 @@
-host: "127.0.0.1" # Host address to ping in order to estimate signal quality
 is_orientation_ned: false # Compass convention (NED / ENU): 0 for North with NED and 0 for East with ENU. Basically ROS compass value is ENU.
 is_zero_altitude: false # Use for ground vehicle
 # utm_zone: "31n" # Specify UTM zone of robot usage. 31n for Paris per example.
 utm_frame_id: "utm"
 odom_frame_id: "odom"
 base_link_frame_id: "base_link"
-heartbeat_topic: "/heartbeat"
+ping_topic: "/ping" # Topic of the ping or delay value in order to estimate signal quality
 navsatfix_topic: "/fix"
 use_odometry: false # Specify if you prefer imu or odometry compass for yaw information.
 imu_topic: "/imu"
