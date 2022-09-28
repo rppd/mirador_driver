@@ -5,6 +5,7 @@ utm_frame_id: "utm"
 odom_frame_id: "odom"
 base_link_frame_id: "base_link"
 ping_topic: "/ping" # Topic of the ping or delay value in order to estimate signal quality
+state_of_charge_topic: "/state_of_charge"
 navsatfix_topic: "/fix"
 use_odometry: false # Specify if you prefer imu or odometry compass for yaw information.
 imu_topic: "/imu"
