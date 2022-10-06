@@ -9,4 +9,6 @@
         <rosparam command="load" file="$(find mirador_driver)/config/rosping_config.yaml" />
         <remap from="ping/delay" to="ping"/>
     </node>
+
+      <node pkg="topic_tools" type="relay_field" name="state_of_charge_relayer" args="/status /state_of_charge std_msgs/Float32  '{data: m.charge_estimate}' "/>
 </launch>

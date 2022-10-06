@@ -130,7 +130,7 @@ void MiradorDriver::pingCallback(const std_msgs::Float64& _delay)
 
 void MiradorDriver::stateOfChargeCallback(const std_msgs::Float32& _soc)
 {
-    m_state_of_charge = std::min(std::max(int(round(_soc.data)), 0), 100);
+    m_state_of_charge = std::min(std::max(int(round(100 * _soc.data)), 0), 100);
 }
 
 void MiradorDriver::navSatFixCallback(const sensor_msgs::NavSatFix& _navsatfix)
@@ -157,7 +157,7 @@ void MiradorDriver::imuCallback(const sensor_msgs::Imu& _imu)
         siny_cosp = 2 * (_imu.orientation.w * _imu.orientation.z + _imu.orientation.x * _imu.orientation.y);
         cosy_cosp = 1 - 2 * (_imu.orientation.y * _imu.orientation.y + _imu.orientation.z * _imu.orientation.z);
     }
-    m_orientation = std::atan2(siny_cosp, cosy_cosp);
+    m_orientation = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
 }
 
 void MiradorDriver::odometryCallback(const nav_msgs::Odometry& _odometry)
@@ -174,7 +174,7 @@ void MiradorDriver::odometryCallback(const nav_msgs::Odometry& _odometry)
         siny_cosp = 2 * (_odometry.pose.pose.orientation.w * _odometry.pose.pose.orientation.z + _odometry.pose.pose.orientation.x * _odometry.pose.pose.orientation.y);
         cosy_cosp = 1 - 2 * (_odometry.pose.pose.orientation.y * _odometry.pose.pose.orientation.y + _odometry.pose.pose.orientation.z * _odometry.pose.pose.orientation.z);
     }
-    m_orientation = std::atan2(siny_cosp, cosy_cosp);
+    m_orientation = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
 }
 
 void MiradorDriver::flightStatusCallback(const std_msgs::Int8& _flight_status)
