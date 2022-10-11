@@ -16,6 +16,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     private_n.param<std::string>("ping_topic", m_ping_topic, "/ping");
     private_n.param<std::string>("stateOf_charge_topic", m_state_of_charge_topic, "/state_of_charge");
     private_n.param<std::string>("navsatfix_topic", m_navsatfix_topic, "/fix");
+    private_n.param<bool>("use_odometry", m_use_odometry, false);
     if (m_use_odometry) {
         private_n.param<std::string>("odometry_topic", m_odometry_topic, "/odometry");
     }
@@ -147,35 +148,32 @@ void MiradorDriver::imuCallback(const sensor_msgs::Imu& _imu)
 {
     double siny_cosp;
     double cosy_cosp;
+    siny_cosp = 2 * (_imu.orientation.w * _imu.orientation.z + _imu.orientation.x * _imu.orientation.y);
+    cosy_cosp = 1 - 2 * (_imu.orientation.y * _imu.orientation.y + _imu.orientation.z * _imu.orientation.z);
     if (m_is_orientation_ned)
     {
-        siny_cosp = 2 * (_imu.orientation.w * _imu.orientation.z + _imu.orientation.x * _imu.orientation.y);
-        cosy_cosp = 1 - 2 * (_imu.orientation.y * _imu.orientation.y + _imu.orientation.z * _imu.orientation.z);
+        m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
     }
     else
     {
-        siny_cosp = 2 * (_imu.orientation.w * _imu.orientation.z + _imu.orientation.y * _imu.orientation.x);
-        cosy_cosp = 1 - 2 * (_imu.orientation.x * _imu.orientation.x + _imu.orientation.z * _imu.orientation.z);
+        m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
     }
-    m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
 }
 
 void MiradorDriver::odometryCallback(const nav_msgs::Odometry& _odometry)
 {
     double siny_cosp;
     double cosy_cosp;
-    if (m_is_orientation_ned)
+    siny_cosp = 2 * (_odometry.pose.pose.orientation.w * _odometry.pose.pose.orientation.z + _odometry.pose.pose.orientation.x * _odometry.pose.pose.orientation.y);
+    cosy_cosp = 1 - 2 * (_odometry.pose.pose.orientation.y * _odometry.pose.pose.orientation.y + _odometry.pose.pose.orientation.z * _odometry.pose.pose.orientation.z);
     if (m_is_orientation_ned)
     {
-        siny_cosp = 2 * (_imu.orientation.w * _imu.orientation.z + _imu.orientation.x * _imu.orientation.y);
-        cosy_cosp = 1 - 2 * (_imu.orientation.y * _imu.orientation.y + _imu.orientation.z * _imu.orientation.z);
+        m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
     }
     else
     {
-        siny_cosp = 2 * (_imu.orientation.w * _imu.orientation.z + _imu.orientation.y * _imu.orientation.x);
-        cosy_cosp = 1 - 2 * (_imu.orientation.x * _imu.orientation.x + _imu.orientation.z * _imu.orientation.z);
+        m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
     }
-    m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
 }
 
 void MiradorDriver::flightStatusCallback(const std_msgs::Int8& _flight_status)
