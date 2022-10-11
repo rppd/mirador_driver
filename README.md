@@ -5,7 +5,16 @@ Mirader ROS driver for bridging ROS robot metadata with **Mirador HMI**
 
 This package is a driver that aim to link [**Mirador**](https://github.com/julesberhault/mirador), (Mirador Human-Machine Interface) with ROS. It makes a bridge between ROS topics and JavaScript executing on the HMI web page. The data collected are then displayed on the interface and users can communicate with their robot simply and remotely through a web navigator. Web server is a nodejs server, it rely on socket.io communications to link web pages and share data synchronously.
 
+### Install
+
+Clone this repository:
+```bash
+clone https://github.com/julesberhault/mirador_driver.git
+```
+
 ### Compiling
+
+First, you need ROS environment distro if not already installed. If not, check this [link](http://wiki.ros.org/fr/ROS/Installation).
 
 Compile package:
 
