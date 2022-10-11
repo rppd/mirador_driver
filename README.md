@@ -1,11 +1,20 @@
-# Mirador Driver
+# Mirador driver
 Mirader ROS driver for bridging ROS robot metadata with **Mirador HMI**
 
 ## mirador_driver
 
 This package is a driver that aim to link [**Mirador**](https://github.com/julesberhault/mirador), (Mirador Human-Machine Interface) with ROS. It makes a bridge between ROS topics and JavaScript executing on the HMI web page. The data collected are then displayed on the interface and users can communicate with their robot simply and remotely through a web navigator. Web server is a nodejs server, it rely on socket.io communications to link web pages and share data synchronously.
 
+### Install
+
+Clone this repository:
+```bash
+git clone https://github.com/julesberhault/mirador_driver.git
+```
+
 ### Compiling
+
+First, you need [**ROS environment**](http://wiki.ros.org/fr/ROS/Installation) distro if not already installed.
 
 Compile package:
 
@@ -71,7 +80,7 @@ rosrun mirador_driver mirador_driver
 
 ### Publishers
 
-#### Mirador HMI side (Mirador standardized, then computed with JavaScript with [roslibjs](https://github.com/RobotWebTools/roslibjs))
+#### Mirador HMI side (Mirador standardized, then computed with JavaScript with [**roslibjs**](https://github.com/RobotWebTools/roslibjs))
 
 | Default value | Message type | Desciption |
 | --- | --- | --- |
@@ -81,20 +90,27 @@ rosrun mirador_driver mirador_driver
 
 This package is used to get ping (delay in ms) with the robot
 
+You can easily check the package from this [link](https://github.com/julesberhault/rosping).
+
+### Installation
+
+Clone the repository:
+```bash
+git clone https://github.com/julesberhault/rosping.git
+```
+
 ### Compiling
 
-Compile package as **sudo**:
-
+Compile this package:
 ```bash
-sudo rosping rosping
+rosping rosping
 ```
 
 ### Running
 
 Run node with rosrun:
-
 ```bash
-rosrun rosping rosping HOSTNAME
+rosrun rosping rosping <HOSTNAME>
 ```
 with **HOSTNAME** the IP address or hostname you wish to ping
 
