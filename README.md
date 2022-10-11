@@ -90,18 +90,25 @@ rosrun mirador_driver mirador_driver
 
 This package is used to get ping (delay in ms) with the robot
 
+You can easily check the package from this [link](https://github.com/julesberhault/rosping).
+
+### Installation
+
+Clone the repository:
+```bash
+clone https://github.com/julesberhault/rosping.git
+```
+
 ### Compiling
 
-Compile package as **sudo**:
-
+Compile this package:
 ```bash
-sudo rosping rosping
+rosping rosping
 ```
 
 ### Running
 
 Run node with rosrun:
-
 ```bash
 rosrun rosping rosping HOSTNAME
 ```
