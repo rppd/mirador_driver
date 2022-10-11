@@ -14,7 +14,7 @@ clone https://github.com/julesberhault/mirador_driver.git
 
 ### Compiling
 
-First, you need [**ROS environment*](http://wiki.ros.org/fr/ROS/Installation) distro if not already installed.
+First, you need [**ROS environment**](http://wiki.ros.org/fr/ROS/Installation) distro if not already installed.
 
 Compile package:
 
