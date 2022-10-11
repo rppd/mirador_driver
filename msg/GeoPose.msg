@@ -12,5 +12,5 @@ float64 longitude
 # Altitude [m]. Positive is above the WGS 84 ellipsoid (NaN if unspecified).
 float64 altitude
 
-# Geographical orientation [degrees]. NED convention, 0 when oriented towards North and 90 degrees for East.
-float64 orientation
+# Geographical heading [degrees]. NED convention, 0 when oriented towards North and 90 degrees for East.
+float64 heading

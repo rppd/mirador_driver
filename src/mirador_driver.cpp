@@ -56,7 +56,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     m_signal_quality = 0;
     m_is_running = false;
     m_position = geographic_msgs::GeoPoint();
-    m_orientation = .0;
+    m_heading = .0;
     m_mode = 0;
     m_mission_id = "";
     m_is_running = false;
@@ -149,15 +149,15 @@ void MiradorDriver::imuCallback(const sensor_msgs::Imu& _imu)
     double cosy_cosp;
     if (m_is_orientation_ned)
     {
-        siny_cosp = 2 * (_imu.orientation.w * _imu.orientation.z + _imu.orientation.y * _imu.orientation.x);
-        cosy_cosp = 1 - 2 * (_imu.orientation.x * _imu.orientation.x + _imu.orientation.z * _imu.orientation.z);
-    }
-    else
-    {
         siny_cosp = 2 * (_imu.orientation.w * _imu.orientation.z + _imu.orientation.x * _imu.orientation.y);
         cosy_cosp = 1 - 2 * (_imu.orientation.y * _imu.orientation.y + _imu.orientation.z * _imu.orientation.z);
     }
-    m_orientation = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+    else
+    {
+        siny_cosp = 2 * (_imu.orientation.w * _imu.orientation.z + _imu.orientation.y * _imu.orientation.x);
+        cosy_cosp = 1 - 2 * (_imu.orientation.x * _imu.orientation.x + _imu.orientation.z * _imu.orientation.z);
+    }
+    m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
 }
 
 void MiradorDriver::odometryCallback(const nav_msgs::Odometry& _odometry)
@@ -165,16 +165,17 @@ void MiradorDriver::odometryCallback(const nav_msgs::Odometry& _odometry)
     double siny_cosp;
     double cosy_cosp;
     if (m_is_orientation_ned)
+    if (m_is_orientation_ned)
     {
-        siny_cosp = 2 * (_odometry.pose.pose.orientation.w * _odometry.pose.pose.orientation.z + _odometry.pose.pose.orientation.y * _odometry.pose.pose.orientation.x);
-        cosy_cosp = 1 - 2 * (_odometry.pose.pose.orientation.x * _odometry.pose.pose.orientation.x + _odometry.pose.pose.orientation.z * _odometry.pose.pose.orientation.z);
+        siny_cosp = 2 * (_imu.orientation.w * _imu.orientation.z + _imu.orientation.x * _imu.orientation.y);
+        cosy_cosp = 1 - 2 * (_imu.orientation.y * _imu.orientation.y + _imu.orientation.z * _imu.orientation.z);
     }
     else
     {
-        siny_cosp = 2 * (_odometry.pose.pose.orientation.w * _odometry.pose.pose.orientation.z + _odometry.pose.pose.orientation.x * _odometry.pose.pose.orientation.y);
-        cosy_cosp = 1 - 2 * (_odometry.pose.pose.orientation.y * _odometry.pose.pose.orientation.y + _odometry.pose.pose.orientation.z * _odometry.pose.pose.orientation.z);
+        siny_cosp = 2 * (_imu.orientation.w * _imu.orientation.z + _imu.orientation.y * _imu.orientation.x);
+        cosy_cosp = 1 - 2 * (_imu.orientation.x * _imu.orientation.x + _imu.orientation.z * _imu.orientation.z);
     }
-    m_orientation = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+    m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
 }
 
 void MiradorDriver::flightStatusCallback(const std_msgs::Int8& _flight_status)
@@ -220,7 +221,7 @@ void MiradorDriver::publishStatus()
     status.pose.latitude = m_position.latitude;
     status.pose.longitude = m_position.longitude;
     status.pose.altitude = m_position.altitude;
-    status.pose.orientation = m_orientation;
+    status.pose.heading = m_heading;
     status.mode = m_mode;
     status.mission_id = m_mission_id;
     status.is_running = m_is_running;

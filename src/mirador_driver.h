@@ -148,7 +148,7 @@ class MiradorDriver
         int m_state_of_charge;
         ros::Time m_last_time;
         geographic_msgs::GeoPoint m_position;
-        double m_orientation;
+        double m_heading;
         int m_mode;
         int m_flight_status;
         float m_camera_elevation;
