@@ -1,4 +1,4 @@
-# Mirador Driver
+# Mirador driver
 Mirader ROS driver for bridging ROS robot metadata with **Mirador HMI**
 
 ## mirador_driver
@@ -9,7 +9,7 @@ This package is a driver that aim to link [**Mirador**](https://github.com/jules
 
 Clone this repository:
 ```bash
-clone https://github.com/julesberhault/mirador_driver.git
+git clone https://github.com/julesberhault/mirador_driver.git
 ```
 
 ### Compiling
@@ -96,7 +96,7 @@ You can easily check the package from this [link](https://github.com/julesberhau
 
 Clone the repository:
 ```bash
-clone https://github.com/julesberhault/rosping.git
+git clone https://github.com/julesberhault/rosping.git
 ```
 
 ### Compiling
