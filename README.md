@@ -14,7 +14,7 @@ clone https://github.com/julesberhault/mirador_driver.git
 
 ### Compiling
 
-First, you need ROS environment distro if not already installed. If not, check this [link](http://wiki.ros.org/fr/ROS/Installation).
+First, you need ROS environment distro if not already installed. If not, check this [**link**](http://wiki.ros.org/fr/ROS/Installation).
 
 Compile package:
 
@@ -80,7 +80,7 @@ rosrun mirador_driver mirador_driver
 
 ### Publishers
 
-#### Mirador HMI side (Mirador standardized, then computed with JavaScript with [roslibjs](https://github.com/RobotWebTools/roslibjs))
+#### Mirador HMI side (Mirador standardized, then computed with JavaScript with [**roslibjs**](https://github.com/RobotWebTools/roslibjs))
 
 | Default value | Message type | Desciption |
 | --- | --- | --- |
