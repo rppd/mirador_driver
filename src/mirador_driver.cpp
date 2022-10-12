@@ -80,16 +80,19 @@ void MiradorDriver::missionCallback(const mirador_driver::Mission& _mission)
             case 1 :
                 ROS_INFO("Guide mission received");
                 m_mode = _mission.type;
+                m_mission_id = _mission.id;
                 m_mission_points = _mission.points;
                 break;
             case 2 :
                 ROS_INFO("Route mission received");
                 m_mode = _mission.type;
+                m_mission_id = _mission.id;
                 m_mission_points = _mission.points;
                 break;
             case 3 :
                 ROS_INFO("Exploration mission received");
                 m_mode = _mission.type;
+                m_mission_id = _mission.id;
                 m_mission_points = _mission.points;
                 break;
             default :
@@ -116,6 +119,16 @@ void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
         m_is_running = true;
         ROS_INFO("Mission launched");
     }
+}
+
+void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
+{
+    m_moveBaseClient.cancelGoal();
+    m_mode = 0;
+    m_mission_id = "";
+    m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+    m_is_running = false;
+    ROS_INFO("Mission aborted");
 }
 
 void MiradorDriver::pingCallback(const std_msgs::Float64& _delay)
@@ -193,15 +206,6 @@ void MiradorDriver::cameraZoomCallback(const std_msgs::Int8&  _camera_zoom)
 void MiradorDriver::eStopCallback(const std_msgs::Bool& _e_stop)
 {
     m_e_stop = _e_stop.data;
-}
-
-void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
-{
-    m_moveBaseClient.cancelGoal();
-    m_mission_points = std::vector<geographic_msgs::GeoPoint>();
-    m_is_running = false;
-    m_mode = 0;
-    ROS_INFO("Mission aborted");
 }
 
 // -------------------- Publishers --------------------
