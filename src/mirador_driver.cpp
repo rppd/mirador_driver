@@ -152,7 +152,7 @@ void MiradorDriver::imuCallback(const sensor_msgs::Imu& _imu)
     cosy_cosp = 1 - 2 * (_imu.orientation.y * _imu.orientation.y + _imu.orientation.z * _imu.orientation.z);
     if (m_is_orientation_ned)
     {
-        m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI
+        m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
     }
     else
     {
@@ -168,7 +168,7 @@ void MiradorDriver::odometryCallback(const nav_msgs::Odometry& _odometry)
     cosy_cosp = 1 - 2 * (_odometry.pose.pose.orientation.y * _odometry.pose.pose.orientation.y + _odometry.pose.pose.orientation.z * _odometry.pose.pose.orientation.z);
     if (m_is_orientation_ned)
     {
-        m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI
+        m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
     }
     else
     {
