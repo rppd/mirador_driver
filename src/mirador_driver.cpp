@@ -165,7 +165,6 @@ void MiradorDriver::odometryCallback(const nav_msgs::Odometry& _odometry)
     double siny_cosp;
     double cosy_cosp;
     if (m_is_orientation_ned)
-    if (m_is_orientation_ned)
     {
         siny_cosp = 2 * (_odometry.pose.pose.orientation.w * _odometry.pose.pose.orientation.z + _odometry.pose.pose.orientation.x * _odometry.pose.pose.orientation.y);
         cosy_cosp = 1 - 2 * (_odometry.pose.pose.orientation.y * _odometry.pose.pose.orientation.y + _odometry.pose.pose.orientation.z * _odometry.pose.pose.orientation.z);

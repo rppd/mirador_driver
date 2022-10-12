@@ -51,6 +51,7 @@
   <buildtool_depend>catkin</buildtool_depend>
   
   <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
   <build_depend>actionlib_msgs</build_depend>
   <build_depend>geographic_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
@@ -69,7 +70,6 @@
   <build_export_depend>std_msgs</build_export_depend>
   <build_export_depend>tf2_ros</build_export_depend>
   <build_export_depend>tf2_geometry_msgs</build_export_depend>
-  <exec_depend>message_runtime</exec_depend>
   <exec_depend>actionlib_msgs</exec_depend>
   <exec_depend>geographic_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
