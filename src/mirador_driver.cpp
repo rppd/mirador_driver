@@ -16,6 +16,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     private_n.param<std::string>("ping_topic", m_ping_topic, "/ping");
     private_n.param<std::string>("stateOf_charge_topic", m_state_of_charge_topic, "/state_of_charge");
     private_n.param<std::string>("navsatfix_topic", m_navsatfix_topic, "/fix");
+    private_n.param<bool>("use_odometry", m_use_odometry, false);
     if (m_use_odometry) {
         private_n.param<std::string>("odometry_topic", m_odometry_topic, "/odometry");
     }
