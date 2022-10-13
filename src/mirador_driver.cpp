@@ -123,12 +123,14 @@ void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
 
 void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
 {
-    m_moveBaseClient.cancelGoal();
-    m_mode = 0;
-    m_mission_id = "";
-    m_mission_points = std::vector<geographic_msgs::GeoPoint>();
-    m_is_running = false;
-    ROS_INFO("Mission aborted");
+    if (m_mission_id != "") {
+        m_moveBaseClient.cancelGoal();
+        m_mode = 0;
+        m_mission_id = "";
+        m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+        m_is_running = false;
+        ROS_INFO("Mission aborted");
+    }
 }
 
 void MiradorDriver::pingCallback(const std_msgs::Float64& _delay)
@@ -301,12 +303,14 @@ geometry_msgs::PointStamped MiradorDriver::utmToOdom(const geometry_msgs::PointS
 {
     geometry_msgs::PointStamped odom_point;
     bool wait = true;
+    int count = 0;
     tf2_ros::TransformListener tfListener(m_tf2_buffer);
     geometry_msgs::TransformStamped transformStamped;
-    while(wait)
+    while (wait || count < 20)
     {
         try
         {
+            count += 1;
             transformStamped = m_tf2_buffer.lookupTransform(m_odom_frame_id, m_utm_frame_id, ros::Time(0));
             tf2::doTransform(_utm_point, odom_point, transformStamped);
             wait = false;
@@ -324,12 +328,14 @@ geometry_msgs::PointStamped MiradorDriver::odomToUtm(const geometry_msgs::PointS
 {
     geometry_msgs::PointStamped utm_point;
     bool wait = true;
+    int count = 0;
     tf2_ros::TransformListener tfListener(m_tf2_buffer);
     geometry_msgs::TransformStamped transformStamped;
-    while(wait)
+    while(wait || count < 20)
     {
         try
         {
+            count += 1;
             transformStamped = m_tf2_buffer.lookupTransform(m_utm_frame_id, m_odom_frame_id, ros::Time(0));
             tf2::doTransform(_odom_point, utm_point, transformStamped);
             wait = false;
