@@ -14,7 +14,7 @@ uint8 WEB_RTC=1
 uint8 signal_quality
 mirador_driver/GeoPose pose
 uint8 mode
-string mission_id
+mirador_driver/Mission mission
 bool is_running
 uint8 state_of_charge
 uint8 flight_status

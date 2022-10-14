@@ -227,7 +227,9 @@ void MiradorDriver::publishStatus()
     status.pose.altitude = m_position.altitude;
     status.pose.heading = m_heading;
     status.mode = m_mode;
-    status.mission_id = m_mission_id;
+    status.mission.id = m_mission_id;
+    status.mission.type = m_mode;
+    status.mission.points = m_mission_points;
     status.is_running = m_is_running;
     status.state_of_charge = m_state_of_charge;
     status.flight_status = m_flight_status;
