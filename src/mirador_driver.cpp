@@ -51,6 +51,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
 
     // Publishers
     m_statusPublisher = n.advertise<mirador_driver::Status>("/mirador/status", 10);
+    m_cmdVelPublisher = n.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
 
     // Variables init
     m_sequence = 0;
@@ -58,6 +59,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     m_is_running = false;
     m_position = geographic_msgs::GeoPoint();
     m_heading = .0;
+    m_publish_cmd_vel = false;
     m_mode = 0;
     m_mission_id = "";
     m_is_running = false;
@@ -74,30 +76,37 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
 
 void MiradorDriver::missionCallback(const mirador_driver::Mission& _mission)
 {
-    if (m_mode == 0)
+    if (_mission.type == 1 && (m_mode == 0 || m_mode == 1))
     {
-        switch (_mission.type) {
-            case 1 :
-                ROS_INFO("Guide mission received");
-                m_mode = _mission.type;
-                m_mission_id = _mission.id;
-                m_mission_points = _mission.points;
-                break;
-            case 2 :
-                ROS_INFO("Route mission received");
-                m_mode = _mission.type;
-                m_mission_id = _mission.id;
-                m_mission_points = _mission.points;
-                break;
-            case 3 :
-                ROS_INFO("Exploration mission received");
-                m_mode = _mission.type;
-                m_mission_id = _mission.id;
-                m_mission_points = _mission.points;
-                break;
-            default :
-                ROS_INFO("Unknown mission");
+        ROS_INFO("Guide mission received");
+        m_mode = _mission.type;
+        m_mission_id = _mission.id;
+        m_mission_points = _mission.points;
+
+        m_is_running = true;
+        ROS_INFO("Guide mission launched");
+        setGuide();
     }
+    else {
+        if (m_mode == 0)
+        {
+            switch (_mission.type) {
+                case 2 :
+                    ROS_INFO("Route mission received");
+                    m_mode = _mission.type;
+                    m_mission_id = _mission.id;
+                    m_mission_points = _mission.points;
+                    break;
+                case 3 :
+                    ROS_INFO("Exploration mission received");
+                    m_mode = _mission.type;
+                    m_mission_id = _mission.id;
+                    m_mission_points = _mission.points;
+                    break;
+                default :
+                    ROS_INFO("Unknown mission");
+            }
+        }
     }
     
 }
@@ -113,23 +122,31 @@ void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
     {
         ROS_INFO("No mission to launch");
     }
-    else
+    if (m_mode == 2)
     {
-        setNextGoal(true);
         m_is_running = true;
-        ROS_INFO("Mission launched");
+        ROS_INFO("Route mission launched");
+        setNextGoal(true);
     }
 }
 
 void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
 {
     if (m_mission_id != "") {
-        m_moveBaseClient.cancelGoal();
-        m_mode = 0;
-        m_mission_id = "";
-        m_mission_points = std::vector<geographic_msgs::GeoPoint>();
         m_is_running = false;
-        ROS_INFO("Mission aborted");
+        try
+        {
+            m_moveBaseClient.cancelGoal();
+            m_mode = 0;
+            m_mission_id = "";
+            m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+            m_is_running = false;
+            ROS_INFO("Mission aborted");
+        }
+        catch (tf2::TransformException& ex)
+        {
+            ROS_WARN("%s", ex.what());
+        }
     }
 }
 
@@ -242,20 +259,91 @@ void MiradorDriver::publishStatus()
     m_statusPublisher.publish(status);
 }
 
+void MiradorDriver::publishCmdVel()
+{
+    if (m_publish_cmd_vel) {
+
+        geometry_msgs::PointStamped robot_point;
+        geometry_msgs::PointStamped target_point;
+
+        latLongToUtm(m_position, robot_point);
+        latLongToUtm(m_mission_points.front(), target_point);
+
+        Eigen::Vector3d xa(robot_point.point.x, robot_point.point.y, m_heading * 180.0 / M_PI);
+        Eigen::Vector3d xb(target_point.point.x, target_point.point.y, 0.0);
+
+        if ((pow((xb - xa)(0), 2) + pow((xb - xa)(1), 2) > 4.0)) {
+
+            Eigen::Matrix3d R;
+            R << cos(xa(2)), sin(xa(2)), 0,
+                -sin(xa(2)), cos(xa(2)), 0,
+                0, 0, 1;
+
+            Eigen::Vector3d x;
+            x = R * (xb - xa);
+
+            Eigen::Matrix2d A;
+            A << -1, x(1),
+                0, -x(0);
+
+            Eigen::Vector2d w(1.0, 0);
+
+            Eigen::Vector2d u;
+            u = A.inverse() * (w - x.head(2));
+
+            m_cmd_vel.linear.x = u(0);
+            m_cmd_vel.angular.z = u(1);
+            m_cmdVelPublisher.publish(m_cmd_vel);
+        }
+        else {
+            ROS_INFO("Guide reached");
+            m_is_running = false;
+            m_mode = 0;
+            m_mission_id = "";
+            m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+            m_publish_cmd_vel = false;
+        }
+    }
+}
+
 // -------------------- Functions --------------------
+
+bool MiradorDriver::setGuide()
+{
+    if (m_mission_points.size() > 0)
+    {
+        ROS_INFO("Setting guide");
+        m_publish_cmd_vel = true;
+        return true;
+    }
+    ROS_INFO("Empty mission guide gived");
+    m_is_running = false;
+    m_mode = 0;
+    m_mission_id = "";
+    m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+    return false;
+}
 
 bool MiradorDriver::setNextGoal(const bool& _first)
 {
     if (_first) {
-        if (m_mission_points.size())
+        if (m_mission_points.size() > 0)
         {
             ROS_INFO("Setting first goal");
-            startMoveBaseGoal(getTargetPose(m_mission_points.front()));
-            return true;
+            geometry_msgs::PoseStamped target_pose;
+            if (!getTargetPose(m_mission_points.front(), target_pose))
+            {
+                return false;
+            }
+            return startMoveBaseGoal(target_pose);
         }
         else
         {
             ROS_INFO("Empty mission gived");
+            m_is_running = false;
+            m_mode = 0;
+            m_mission_id = "";
+            m_mission_points = std::vector<geographic_msgs::GeoPoint>();
             return false;
         }
     }
@@ -263,53 +351,58 @@ bool MiradorDriver::setNextGoal(const bool& _first)
         if (m_mission_points.size() > 1)
         {
             ROS_INFO("Setting next goal");
-            startMoveBaseGoal(getTargetPose(*(m_mission_points.erase(m_mission_points.begin()))));
-            return true;
+            geometry_msgs::PoseStamped target_pose;
+            if (!getTargetPose(*(m_mission_points.erase(m_mission_points.begin())), target_pose))
+            {
+                return false;
+            }
+            return startMoveBaseGoal(target_pose);
         }
         else
         {
             ROS_INFO("Mission finished");
+            m_is_running = false;
+            m_mode = 0;
+            m_mission_id = "";
+            m_mission_points = std::vector<geographic_msgs::GeoPoint>();
             return false;
         }
     }
-
 }
 
-geometry_msgs::PointStamped MiradorDriver::latLongToUtm(const geographic_msgs::GeoPoint& _geo_point)
+void MiradorDriver::latLongToUtm(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PointStamped& utm_point)
 {
-    geometry_msgs::PointStamped utm_point;
     utm_point.header.frame_id = m_utm_frame_id;
     utm_point.header.stamp = ros::Time(0);
     GeographicLib::UTMUPS::Forward(_geo_point.latitude, _geo_point.longitude, m_utm_zone, m_is_north_hemisphere, utm_point.point.x, utm_point.point.y);
-        if (m_is_zero_altitude)
+    if (m_is_zero_altitude)
     {
         utm_point.point.z = _geo_point.altitude;
     }
-
-    return utm_point;
 }
 
-geographic_msgs::GeoPoint MiradorDriver::utmToLatLong(const geometry_msgs::PointStamped& _utm_point)
+void MiradorDriver::utmToLatLong(const geometry_msgs::PointStamped& _utm_point, geographic_msgs::GeoPoint& geo_point)
 {
-    geographic_msgs::GeoPoint geo_point;
     GeographicLib::UTMUPS::Reverse(m_utm_zone, m_is_north_hemisphere, _utm_point.point.x, _utm_point.point.y, geo_point.latitude, geo_point.longitude);
     if (m_is_zero_altitude)
     {
         geo_point.altitude = _utm_point.point.z;
     }
-
-    return geo_point;
 }
 
-geometry_msgs::PointStamped MiradorDriver::utmToOdom(const geometry_msgs::PointStamped& _utm_point)
+bool MiradorDriver::utmToOdom(const geometry_msgs::PointStamped& _utm_point, geometry_msgs::PointStamped& odom_point)
 {
-    geometry_msgs::PointStamped odom_point;
     bool wait = true;
     int count = 0;
     tf2_ros::TransformListener tfListener(m_tf2_buffer);
     geometry_msgs::TransformStamped transformStamped;
-    while (wait || count < 20)
+    while (wait)
     {
+        if (count >= 20)
+        {
+            ROS_WARN("Cannot transform point from utm frame to odom frame");
+            return false;
+        }
         try
         {
             count += 1;
@@ -323,18 +416,22 @@ geometry_msgs::PointStamped MiradorDriver::utmToOdom(const geometry_msgs::PointS
             ros::Duration(.1).sleep();
         }
     }
-    return odom_point;
+    return true;
 }
 
-geometry_msgs::PointStamped MiradorDriver::odomToUtm(const geometry_msgs::PointStamped& _odom_point)
+bool MiradorDriver::odomToUtm(const geometry_msgs::PointStamped& _odom_point, geometry_msgs::PointStamped& utm_point)
 {
-    geometry_msgs::PointStamped utm_point;
     bool wait = true;
     int count = 0;
     tf2_ros::TransformListener tfListener(m_tf2_buffer);
     geometry_msgs::TransformStamped transformStamped;
-    while(wait || count < 20)
+    while(wait)
     {
+        if (count >= 20)
+        {
+            ROS_WARN("Cannot transform point from odom frame to utm frame");
+            return false;
+        }
         try
         {
             count += 1;
@@ -348,16 +445,20 @@ geometry_msgs::PointStamped MiradorDriver::odomToUtm(const geometry_msgs::PointS
             continue;
         }
     }
-    return utm_point;
+    return true;
 }
 
-geometry_msgs::PoseStamped MiradorDriver::getTargetPose(const geographic_msgs::GeoPoint& _geo_point)
+bool MiradorDriver::getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose)
 {
-    geometry_msgs::PoseStamped target_pose;
     target_pose.header.frame_id = m_odom_frame_id;
     target_pose.header.stamp = ros::Time(0);
-    geometry_msgs::PointStamped utm_point = latLongToUtm(_geo_point);
-    geometry_msgs::PointStamped target_point = utmToOdom(utm_point);
+    geometry_msgs::PointStamped utm_point;
+    latLongToUtm(_geo_point, utm_point);
+    geometry_msgs::PointStamped target_point;
+    if (!utmToOdom(utm_point, target_point))
+    {
+        return false;
+    }
     if (m_is_orientation_ned)
     {
         target_pose.pose.position.x = target_point.point.y;
@@ -376,11 +477,17 @@ geometry_msgs::PoseStamped MiradorDriver::getTargetPose(const geographic_msgs::G
     m_sequence++;
     target_pose.header.seq = m_sequence;
     ROS_INFO_STREAM("Goal setted to :"<<"\n"<<"    latitude: "<<_geo_point.latitude<<"\n"<<"   longitude: "<<_geo_point.longitude <<"\n"<<"           x: "<<target_pose.pose.position.x <<"\n"<< "           y: "<<target_pose.pose.position.y);
-    return target_pose;
+    return true;
 }
 
-void MiradorDriver::startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose) {
+bool MiradorDriver::startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose) {
+    int count = 0;
     while (!m_moveBaseClient.waitForServer(ros::Duration(5.0))) {
+        if (count >= 20)
+        {
+            ROS_WARN("No move_base action server detected");
+            return false;
+        }
         ROS_INFO("Waiting for the move_base action server to come up");
     }
 
@@ -390,20 +497,25 @@ void MiradorDriver::startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_
     ROS_INFO("Sending goal");
     m_moveBaseClient.sendGoal(goal);
 
-    m_moveBaseClient.waitForResult();
+    while (m_is_running)
+    {
+        m_moveBaseClient.waitForResult(ros::Duration(5.0));
+        actionlib::SimpleClientGoalState state = m_moveBaseClient.getState();
 
-    actionlib::SimpleClientGoalState state = m_moveBaseClient.getState();
-
-    if (state == actionlib::SimpleClientGoalState::SUCCEEDED) {
-        ROS_INFO("Goal reached");
-        if(!setNextGoal(false)) {
+        // Recursive part: iterate until an error come out or if the mission is fully completed
+        if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
+        {
+            ROS_INFO("Goal reached");
+            return setNextGoal(false);
+        }
+        if (state == actionlib::SimpleClientGoalState::ABORTED && state == actionlib::SimpleClientGoalState::REJECTED && state == actionlib::SimpleClientGoalState::LOST)
+        {
+            m_is_running = false;
+            m_mode = 0;
             m_mission_id = "";
             m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+            return false;
         }
     }
-    if (state == actionlib::SimpleClientGoalState::ABORTED && state == actionlib::SimpleClientGoalState::REJECTED && state == actionlib::SimpleClientGoalState::LOST) {
-        m_mode = 0;
-        m_mission_id = "";
-        m_mission_points = std::vector<geographic_msgs::GeoPoint>();
-    }
+    return false;
 }
