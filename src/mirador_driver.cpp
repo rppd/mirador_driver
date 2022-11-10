@@ -205,12 +205,12 @@ void MiradorDriver::imuCallback(const sensor_msgs::Imu& _imu)
     if (m_is_orientation_ned)
     {
         m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
-        m_yaw = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = M_PI / 2 - std::atan2(siny_cosp, cosy_cosp);
     }
     else
     {
         m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
-        m_yaw = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = std::atan2(siny_cosp, cosy_cosp);
     }
 }
 
@@ -223,12 +223,12 @@ void MiradorDriver::odometryCallback(const nav_msgs::Odometry& _odometry)
     if (m_is_orientation_ned)
     {
         m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
-        m_yaw = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = M_PI / 2 - std::atan2(siny_cosp, cosy_cosp);
     }
     else
     {
         m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
-        m_yaw = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = std::atan2(siny_cosp, cosy_cosp);
     }
 }
 
@@ -288,35 +288,37 @@ void MiradorDriver::publishCmdVel()
     if (m_publish_cmd_vel) {
 
         geometry_msgs::PointStamped robot_point;
-        geometry_msgs::PointStamped target_point;
+        geometry_msgs::PointStamped guide_point;
 
         latLongToUtm(m_position, robot_point);
-        latLongToUtm(m_mission_points.front(), target_point);
+        latLongToUtm(m_mission_points.front(), guide_point);
 
-        Eigen::Vector3d xa(robot_point.point.x, robot_point.point.y, m_yaw * 180.0 / M_PI);
-        Eigen::Vector3d xb(target_point.point.x, target_point.point.y, 0.0);
+        Eigen::Vector3d x_robot(robot_point.point.x, robot_point.point.y, m_yaw);
+        ROS_INFO("YAW:", m_yaw);
+        Eigen::Vector3d x_guide(target_point.point.x, target_point.point.y, 0.0);
 
-        if ((pow((xb - xa)(0), 2) + pow((xb - xa)(1), 2) > 4.0)) {
+        Eigen::Matrix3d R;
+        R << cos(x_robot(2)), sin(x_robot(2)), 0,
+            -sin(x_robot(2)), cos(x_robot(2)), 0,
+            0, 0, 1;
 
-            Eigen::Matrix3d R;
-            R << cos(xa(2)), sin(xa(2)), 0,
-                -sin(xa(2)), cos(xa(2)), 0,
-                0, 0, 1;
+        Eigen::Vector3d x;
+        x = R * (x_guide - x_robot);
 
-            Eigen::Vector3d x;
-            x = R * (xb - xa);
+        if ((pow(x(0), 2) + pow(x(1), 2) > 4.0)) {
 
             Eigen::Matrix2d A;
             A << -1, x(1),
                 0, -x(0);
 
-            Eigen::Vector2d w(1.0, 0);
+            Eigen::Vector2d w(1.0, 0); // Place the the carrot at x = 1 meter in front of the robot.
 
             Eigen::Vector2d u;
             u = A.inverse() * (w - x.head(2));
 
-            m_cmd_vel.linear.x = u(0);
-            m_cmd_vel.angular.z = u(1);
+            m_cmd_vel.linear.x = min(u(0), 1.0);
+            m_cmd_vel.angular.z = min(u(1), 1.0);
+            ROS_INFO("CMD_VEL:", m_cmd_vel);
             m_cmdVelPublisher.publish(m_cmd_vel);
         }
         else {
@@ -483,16 +485,8 @@ bool MiradorDriver::getTargetPose(const geographic_msgs::GeoPoint& _geo_point, g
     {
         return false;
     }
-    if (m_is_orientation_ned)
-    {
-        target_pose.pose.position.x = target_point.point.y;
-        target_pose.pose.position.y = target_point.point.x;
-    }
-    else
-    {
-        target_pose.pose.position.x = target_point.point.x;
-        target_pose.pose.position.y = target_point.point.y;
-    }
+    target_pose.pose.position.x = target_point.point.x;
+    target_pose.pose.position.y = target_point.point.y;
     if (!m_is_zero_altitude)
     {
         target_pose.pose.position.z = target_point.point.z;
