@@ -104,7 +104,7 @@ void MiradorDriver::missionCallback(const mirador_driver::Mission& _mission)
                     m_mission_points = _mission.points;
                     break;
                 default :
-                    ROS_INFO("Unknown mission");
+                    ROS_WARN("Unknown mission type");
             }
         }
     }
@@ -120,7 +120,7 @@ void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
 {
     if (m_mode == 0)
     {
-        ROS_INFO("No mission to launch");
+        ROS_INFO("No route mission to launch");
     }
     if (m_mode == 2)
     {
@@ -133,19 +133,32 @@ void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
 void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
 {
     if (m_mission_id != "") {
-        m_is_running = false;
-        try
-        {
-            m_moveBaseClient.cancelGoal();
-            m_mode = 0;
-            m_mission_id = "";
-            m_mission_points = std::vector<geographic_msgs::GeoPoint>();
-            m_is_running = false;
-            ROS_INFO("Mission aborted");
-        }
-        catch (tf2::TransformException& ex)
-        {
-            ROS_WARN("%s", ex.what());
+        switch (m_mode) {
+            case 1 :
+                m_is_running = false;
+                m_mode = 0;
+                m_mission_id = "";
+                m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+                m_publish_cmd_vel = false;
+                ROS_INFO("Guide mission aborted");
+                break;
+            case 2 :
+                try
+                {
+                    m_is_running = false;
+                    m_mode = 0;
+                    m_mission_id = "";
+                    m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+                    m_moveBaseClient.cancelGoal();
+                    ROS_INFO("Route mission aborted");
+                }
+                catch (tf2::TransformException& ex)
+                {
+                    ROS_WARN("%s", ex.what());
+                }
+                break;
+            default :
+                ROS_WARN("No mission to abort");
         }
     }
 }
