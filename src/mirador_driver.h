@@ -154,6 +154,7 @@ class MiradorDriver
         ros::Time m_last_time;
         geographic_msgs::GeoPoint m_position;
         double m_heading;
+        double m_yaw;
         bool m_publish_cmd_vel;
         geometry_msgs::Twist m_cmd_vel;
         int m_mode;

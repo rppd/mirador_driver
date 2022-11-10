@@ -59,6 +59,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     m_is_running = false;
     m_position = geographic_msgs::GeoPoint();
     m_heading = .0;
+    m_yaw = .0;
     m_publish_cmd_vel = false;
     m_mode = 0;
     m_mission_id = "";
@@ -204,10 +205,12 @@ void MiradorDriver::imuCallback(const sensor_msgs::Imu& _imu)
     if (m_is_orientation_ned)
     {
         m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
     }
     else
     {
         m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
     }
 }
 
@@ -220,10 +223,12 @@ void MiradorDriver::odometryCallback(const nav_msgs::Odometry& _odometry)
     if (m_is_orientation_ned)
     {
         m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
     }
     else
     {
         m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
     }
 }
 
@@ -288,7 +293,7 @@ void MiradorDriver::publishCmdVel()
         latLongToUtm(m_position, robot_point);
         latLongToUtm(m_mission_points.front(), target_point);
 
-        Eigen::Vector3d xa(robot_point.point.x, robot_point.point.y, m_heading * 180.0 / M_PI);
+        Eigen::Vector3d xa(robot_point.point.x, robot_point.point.y, m_yaw * 180.0 / M_PI);
         Eigen::Vector3d xb(target_point.point.x, target_point.point.y, 0.0);
 
         if ((pow((xb - xa)(0), 2) + pow((xb - xa)(1), 2) > 4.0)) {
