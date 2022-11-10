@@ -11,7 +11,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     private_n.param<std::string>("odom_frame_id", m_odom_frame_id, "odom");
     private_n.param<std::string>("base_link_frame_id", m_base_link_frame_id, "base_link");
     std::string utm_grid_zone;
-    private_n.param<std::string>("utm_zone", utm_grid_zone, "31n");
+    private_n.param<std::string>("utm_zone", utm_grid_zone, "31u");
     GeographicLib::UTMUPS::DecodeZone(utm_grid_zone, m_utm_zone, m_is_north_hemisphere);
     private_n.param<std::string>("ping_topic", m_ping_topic, "/ping");
     private_n.param<std::string>("state_of_charge_topic", m_state_of_charge_topic, "/state_of_charge");
@@ -246,12 +246,7 @@ void MiradorDriver::publishStatus()
 {
     mirador_driver::Status status;
 
-    if ((ros::Time(0) - m_last_time).toSec() > 1.0) {
-        status.signal_quality = 0;
-    }
-    else {
-        status.signal_quality = m_signal_quality;
-    }
+    status.signal_quality = m_signal_quality;
     status.pose.latitude = m_position.latitude;
     status.pose.longitude = m_position.longitude;
     status.pose.altitude = m_position.altitude;
