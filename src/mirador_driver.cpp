@@ -59,6 +59,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     m_is_running = false;
     m_position = geographic_msgs::GeoPoint();
     m_heading = .0;
+    m_yaw = .0;
     m_publish_cmd_vel = false;
     m_mode = 0;
     m_mission_id = "";
@@ -76,37 +77,43 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
 
 void MiradorDriver::missionCallback(const mirador_driver::Mission& _mission)
 {
-    if (_mission.type == 1 && (m_mode == 0 || m_mode == 1))
+    if (m_position.latitude != 0 && m_position.longitude != 0)
     {
-        ROS_INFO("Guide mission received");
-        m_mode = _mission.type;
-        m_mission_id = _mission.id;
-        m_mission_points = _mission.points;
-
-        m_is_running = true;
-        ROS_INFO("Guide mission launched");
-        setGuide();
-    }
-    else {
-        if (m_mode == 0)
+        if (_mission.type == 1 && (m_mode == 0 || m_mode == 1))
         {
-            switch (_mission.type) {
-                case 2 :
-                    ROS_INFO("Route mission received");
-                    m_mode = _mission.type;
-                    m_mission_id = _mission.id;
-                    m_mission_points = _mission.points;
-                    break;
-                case 3 :
-                    ROS_INFO("Exploration mission received");
-                    m_mode = _mission.type;
-                    m_mission_id = _mission.id;
-                    m_mission_points = _mission.points;
-                    break;
-                default :
-                    ROS_WARN("Unknown mission type");
+            ROS_INFO("Guide mission received");
+            m_mode = _mission.type;
+            m_mission_id = _mission.id;
+            m_mission_points = _mission.points;
+
+            m_is_running = true;
+            ROS_INFO("Guide mission launched");
+            setGuide();
+        }
+        else {
+            if (m_mode == 0)
+            {
+                switch (_mission.type) {
+                    case 2 :
+                        ROS_INFO("Route mission received");
+                        m_mode = _mission.type;
+                        m_mission_id = _mission.id;
+                        m_mission_points = _mission.points;
+                        break;
+                    case 3 :
+                        ROS_INFO("Exploration mission received");
+                        m_mode = _mission.type;
+                        m_mission_id = _mission.id;
+                        m_mission_points = _mission.points;
+                        break;
+                    default :
+                        ROS_WARN("Unknown mission type");
+                }
             }
         }
+    }
+    else {
+        ROS_WARN("No GPS signal, impossible to perform mission");
     }
     
 }
@@ -198,10 +205,12 @@ void MiradorDriver::imuCallback(const sensor_msgs::Imu& _imu)
     if (m_is_orientation_ned)
     {
         m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = M_PI / 2 - std::atan2(siny_cosp, cosy_cosp);
     }
     else
     {
         m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = std::atan2(siny_cosp, cosy_cosp);
     }
 }
 
@@ -214,10 +223,12 @@ void MiradorDriver::odometryCallback(const nav_msgs::Odometry& _odometry)
     if (m_is_orientation_ned)
     {
         m_heading = 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = M_PI / 2 - std::atan2(siny_cosp, cosy_cosp);
     }
     else
     {
         m_heading = 90.0 - 180.0 * std::atan2(siny_cosp, cosy_cosp) / M_PI;
+        m_yaw = std::atan2(siny_cosp, cosy_cosp);
     }
 }
 
@@ -246,7 +257,12 @@ void MiradorDriver::publishStatus()
 {
     mirador_driver::Status status;
 
-    status.signal_quality = m_signal_quality;
+    if ((ros::Time(0) - m_last_time).toSec() > 1.0) {
+        status.signal_quality = 0;
+    }
+    else {
+        status.signal_quality = m_signal_quality;
+    }
     status.pose.latitude = m_position.latitude;
     status.pose.longitude = m_position.longitude;
     status.pose.altitude = m_position.altitude;
@@ -272,35 +288,37 @@ void MiradorDriver::publishCmdVel()
     if (m_publish_cmd_vel) {
 
         geometry_msgs::PointStamped robot_point;
-        geometry_msgs::PointStamped target_point;
+        geometry_msgs::PointStamped guide_point;
 
         latLongToUtm(m_position, robot_point);
-        latLongToUtm(m_mission_points.front(), target_point);
+        latLongToUtm(m_mission_points.front(), guide_point);
 
-        Eigen::Vector3d xa(robot_point.point.x, robot_point.point.y, m_heading * 180.0 / M_PI);
-        Eigen::Vector3d xb(target_point.point.x, target_point.point.y, 0.0);
+        Eigen::Vector3d x_robot(robot_point.point.x, robot_point.point.y, m_yaw);
+        ROS_INFO("YAW:", m_yaw);
+        Eigen::Vector3d x_guide(target_point.point.x, target_point.point.y, 0.0);
 
-        if ((pow((xb - xa)(0), 2) + pow((xb - xa)(1), 2) > 4.0)) {
+        Eigen::Matrix3d R;
+        R << cos(x_robot(2)), sin(x_robot(2)), 0,
+            -sin(x_robot(2)), cos(x_robot(2)), 0,
+            0, 0, 1;
 
-            Eigen::Matrix3d R;
-            R << cos(xa(2)), sin(xa(2)), 0,
-                -sin(xa(2)), cos(xa(2)), 0,
-                0, 0, 1;
+        Eigen::Vector3d x;
+        x = R * (x_guide - x_robot);
 
-            Eigen::Vector3d x;
-            x = R * (xb - xa);
+        if ((pow(x(0), 2) + pow(x(1), 2) > 4.0)) {
 
             Eigen::Matrix2d A;
             A << -1, x(1),
                 0, -x(0);
 
-            Eigen::Vector2d w(1.0, 0);
+            Eigen::Vector2d w(1.0, 0); // Place the the carrot at x = 1 meter in front of the robot.
 
             Eigen::Vector2d u;
             u = A.inverse() * (w - x.head(2));
 
-            m_cmd_vel.linear.x = u(0);
-            m_cmd_vel.angular.z = u(1);
+            m_cmd_vel.linear.x = min(u(0), 1.0);
+            m_cmd_vel.angular.z = min(u(1), 1.0);
+            ROS_INFO("CMD_VEL:", m_cmd_vel);
             m_cmdVelPublisher.publish(m_cmd_vel);
         }
         else {
@@ -467,16 +485,8 @@ bool MiradorDriver::getTargetPose(const geographic_msgs::GeoPoint& _geo_point, g
     {
         return false;
     }
-    if (m_is_orientation_ned)
-    {
-        target_pose.pose.position.x = target_point.point.y;
-        target_pose.pose.position.y = target_point.point.x;
-    }
-    else
-    {
-        target_pose.pose.position.x = target_point.point.x;
-        target_pose.pose.position.y = target_point.point.y;
-    }
+    target_pose.pose.position.x = target_point.point.x;
+    target_pose.pose.position.y = target_point.point.y;
     if (!m_is_zero_altitude)
     {
         target_pose.pose.position.z = target_point.point.z;
