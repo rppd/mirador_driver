@@ -11,7 +11,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     private_n.param<std::string>("odom_frame_id", m_odom_frame_id, "odom");
     private_n.param<std::string>("base_link_frame_id", m_base_link_frame_id, "base_link");
     std::string utm_grid_zone;
-    private_n.param<std::string>("utm_zone", utm_grid_zone, "31u");
+    private_n.param<std::string>("utm_zone", utm_grid_zone, "31n");
     GeographicLib::UTMUPS::DecodeZone(utm_grid_zone, m_utm_zone, m_is_north_hemisphere);
     private_n.param<std::string>("ping_topic", m_ping_topic, "/ping");
     private_n.param<std::string>("state_of_charge_topic", m_state_of_charge_topic, "/state_of_charge");
@@ -76,37 +76,43 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
 
 void MiradorDriver::missionCallback(const mirador_driver::Mission& _mission)
 {
-    if (_mission.type == 1 && (m_mode == 0 || m_mode == 1))
+    if (m_position.latitude != 0 && m_position.longitude != 0)
     {
-        ROS_INFO("Guide mission received");
-        m_mode = _mission.type;
-        m_mission_id = _mission.id;
-        m_mission_points = _mission.points;
-
-        m_is_running = true;
-        ROS_INFO("Guide mission launched");
-        setGuide();
-    }
-    else {
-        if (m_mode == 0)
+        if (_mission.type == 1 && (m_mode == 0 || m_mode == 1))
         {
-            switch (_mission.type) {
-                case 2 :
-                    ROS_INFO("Route mission received");
-                    m_mode = _mission.type;
-                    m_mission_id = _mission.id;
-                    m_mission_points = _mission.points;
-                    break;
-                case 3 :
-                    ROS_INFO("Exploration mission received");
-                    m_mode = _mission.type;
-                    m_mission_id = _mission.id;
-                    m_mission_points = _mission.points;
-                    break;
-                default :
-                    ROS_WARN("Unknown mission type");
+            ROS_INFO("Guide mission received");
+            m_mode = _mission.type;
+            m_mission_id = _mission.id;
+            m_mission_points = _mission.points;
+
+            m_is_running = true;
+            ROS_INFO("Guide mission launched");
+            setGuide();
+        }
+        else {
+            if (m_mode == 0)
+            {
+                switch (_mission.type) {
+                    case 2 :
+                        ROS_INFO("Route mission received");
+                        m_mode = _mission.type;
+                        m_mission_id = _mission.id;
+                        m_mission_points = _mission.points;
+                        break;
+                    case 3 :
+                        ROS_INFO("Exploration mission received");
+                        m_mode = _mission.type;
+                        m_mission_id = _mission.id;
+                        m_mission_points = _mission.points;
+                        break;
+                    default :
+                        ROS_WARN("Unknown mission type");
+                }
             }
         }
+    }
+    else {
+        ROS_WARN("No GPS signal, impossible to perform mission");
     }
     
 }
@@ -246,7 +252,12 @@ void MiradorDriver::publishStatus()
 {
     mirador_driver::Status status;
 
-    status.signal_quality = m_signal_quality;
+    if ((ros::Time(0) - m_last_time).toSec() > 1.0) {
+        status.signal_quality = 0;
+    }
+    else {
+        status.signal_quality = m_signal_quality;
+    }
     status.pose.latitude = m_position.latitude;
     status.pose.longitude = m_position.longitude;
     status.pose.altitude = m_position.altitude;
