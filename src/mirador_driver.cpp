@@ -257,12 +257,7 @@ void MiradorDriver::publishStatus()
 {
     mirador_driver::Status status;
 
-    if ((ros::Time(0) - m_last_time).toSec() > 1.0) {
-        status.signal_quality = 0;
-    }
-    else {
-        status.signal_quality = m_signal_quality;
-    }
+    status.signal_quality = m_signal_quality;
     status.pose.latitude = m_position.latitude;
     status.pose.longitude = m_position.longitude;
     status.pose.altitude = m_position.altitude;
@@ -285,7 +280,7 @@ void MiradorDriver::publishStatus()
 
 void MiradorDriver::publishCmdVel()
 {
-    if (m_publish_cmd_vel) {
+    if (m_publish_cmd_vel && m_signal_quality > 0) {
 
         geometry_msgs::PointStamped robot_point;
         geometry_msgs::PointStamped guide_point;
@@ -294,8 +289,7 @@ void MiradorDriver::publishCmdVel()
         latLongToUtm(m_mission_points.front(), guide_point);
 
         Eigen::Vector3d x_robot(robot_point.point.x, robot_point.point.y, m_yaw);
-        ROS_INFO("YAW:", m_yaw);
-        Eigen::Vector3d x_guide(target_point.point.x, target_point.point.y, 0.0);
+        Eigen::Vector3d x_guide(guide_point.point.x, guide_point.point.y, 0.0);
 
         Eigen::Matrix3d R;
         R << cos(x_robot(2)), sin(x_robot(2)), 0,
@@ -306,19 +300,22 @@ void MiradorDriver::publishCmdVel()
         x = R * (x_guide - x_robot);
 
         if ((pow(x(0), 2) + pow(x(1), 2) > 4.0)) {
-
-            Eigen::Matrix2d A;
-            A << -1, x(1),
-                0, -x(0);
-
-            Eigen::Vector2d w(1.0, 0); // Place the the carrot at x = 1 meter in front of the robot.
-
             Eigen::Vector2d u;
-            u = A.inverse() * (w - x.head(2));
 
-            m_cmd_vel.linear.x = min(u(0), 1.0);
-            m_cmd_vel.angular.z = min(u(1), 1.0);
-            ROS_INFO("CMD_VEL:", m_cmd_vel);
+            if (x(0) > 0.0 || (x(0) > -3.0 && abs(x(1)) < 1.0)) {
+                Eigen::Matrix2d A;
+                A << -1, x(1),
+                    0, -x(0);
+                Eigen::Vector2d w(1.0, 0); // Place the the carrot at x = 1 meter in front of the robot.
+                u = A.inverse() * (w - x.head(2));
+            }
+            else {
+                u(0) = 0;
+                u(1) = 1.5 - (atan2((x_guide - x_robot)(1), (x_guide - x_robot)(0)) - x_robot(2)) / M_PI;
+            }
+
+            m_cmd_vel.linear.x = std::max(std::min(u(0), 1.0), -1.0);
+            m_cmd_vel.angular.z = std::max(std::min(u(1), 1.0), -1.0);
             m_cmdVelPublisher.publish(m_cmd_vel);
         }
         else {
