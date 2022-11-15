@@ -131,7 +131,6 @@ void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
     }
     if (m_mode == 2)
     {
-        m_is_running = true;
         ROS_INFO("Route mission launched");
         setNextGoal(true);
     }
@@ -139,34 +138,32 @@ void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
 
 void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
 {
-    if (m_mission_id != "") {
-        switch (m_mode) {
-            case 1 :
+    switch (m_mode) {
+        case 1 :
+            m_is_running = false;
+            m_mode = 0;
+            m_mission_id = "";
+            m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+            m_publish_cmd_vel = false;
+            ROS_INFO("Guide mission aborted");
+            break;
+        case 2 :
+            try
+            {
                 m_is_running = false;
                 m_mode = 0;
                 m_mission_id = "";
                 m_mission_points = std::vector<geographic_msgs::GeoPoint>();
-                m_publish_cmd_vel = false;
-                ROS_INFO("Guide mission aborted");
-                break;
-            case 2 :
-                try
-                {
-                    m_is_running = false;
-                    m_mode = 0;
-                    m_mission_id = "";
-                    m_mission_points = std::vector<geographic_msgs::GeoPoint>();
-                    m_moveBaseClient.cancelGoal();
-                    ROS_INFO("Route mission aborted");
-                }
-                catch (tf2::TransformException& ex)
-                {
-                    ROS_WARN("%s", ex.what());
-                }
-                break;
-            default :
-                ROS_WARN("No mission to abort");
-        }
+                m_moveBaseClient.cancelGoal();
+                ROS_INFO("Route mission aborted");
+            }
+            catch (tf2::TransformException& ex)
+            {
+                ROS_WARN("%s", ex.what());
+            }
+            break;
+        default :
+            ROS_WARN("No mission to abort");
     }
 }
 
@@ -311,7 +308,7 @@ void MiradorDriver::publishCmdVel()
             }
             else {
                 u(0) = 0;
-                u(1) = 1.5 - (atan2((x_guide - x_robot)(1), (x_guide - x_robot)(0)) - x_robot(2)) / M_PI;
+                u(1) = (atan2((x_guide - x_robot)(1), (x_guide - x_robot)(0))) / M_PI;
             }
 
             m_cmd_vel.linear.x = std::max(std::min(u(0), 1.0), -1.0);
@@ -356,13 +353,14 @@ bool MiradorDriver::setNextGoal(const bool& _first)
             geometry_msgs::PoseStamped target_pose;
             if (!getTargetPose(m_mission_points.front(), target_pose))
             {
+                ROS_WARN("Failed to get target pose");
                 return false;
             }
             return startMoveBaseGoal(target_pose);
         }
         else
         {
-            ROS_INFO("Empty mission gived");
+            ROS_WARN("Empty mission gived");
             m_is_running = false;
             m_mode = 0;
             m_mission_id = "";
@@ -377,6 +375,7 @@ bool MiradorDriver::setNextGoal(const bool& _first)
             geometry_msgs::PoseStamped target_pose;
             if (!getTargetPose(*(m_mission_points.erase(m_mission_points.begin())), target_pose))
             {
+                ROS_WARN("Failed to get target pose");
                 return false;
             }
             return startMoveBaseGoal(target_pose);
@@ -421,7 +420,7 @@ bool MiradorDriver::utmToOdom(const geometry_msgs::PointStamped& _utm_point, geo
     geometry_msgs::TransformStamped transformStamped;
     while (wait)
     {
-        if (count >= 20)
+        if (count >= 5)
         {
             ROS_WARN("Cannot transform point from utm frame to odom frame");
             return false;
@@ -450,7 +449,7 @@ bool MiradorDriver::odomToUtm(const geometry_msgs::PointStamped& _odom_point, ge
     geometry_msgs::TransformStamped transformStamped;
     while(wait)
     {
-        if (count >= 20)
+        if (count >= 5)
         {
             ROS_WARN("Cannot transform point from odom frame to utm frame");
             return false;
@@ -497,12 +496,7 @@ bool MiradorDriver::getTargetPose(const geographic_msgs::GeoPoint& _geo_point, g
 
 bool MiradorDriver::startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose) {
     int count = 0;
-    while (!m_moveBaseClient.waitForServer(ros::Duration(5.0))) {
-        if (count >= 20)
-        {
-            ROS_WARN("No move_base action server detected");
-            return false;
-        }
+    while (!m_moveBaseClient.waitForServer(ros::Duration(1.0)) && count <= 5) {
         ROS_INFO("Waiting for the move_base action server to come up");
     }
 
@@ -510,27 +504,38 @@ bool MiradorDriver::startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_
     goal.target_pose = _target_pose;
 
     ROS_INFO("Sending goal");
-    m_moveBaseClient.sendGoal(goal);
-
-    while (m_is_running)
+    try
     {
-        m_moveBaseClient.waitForResult(ros::Duration(5.0));
-        actionlib::SimpleClientGoalState state = m_moveBaseClient.getState();
+        m_moveBaseClient.sendGoal(goal);
+        ROS_INFO("Goal sent");
+        m_is_running = true;
+        return true;
+    }
+    catch(const std::exception& e)
+    {
+        ROS_INFO("Failed to send goal");
+        return false;
+    }
+}
 
-        // Recursive part: iterate until an error come out or if the mission is fully completed
-        if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
-        {
-            ROS_INFO("Goal reached");
-            return setNextGoal(false);
-        }
-        if (state == actionlib::SimpleClientGoalState::ABORTED && state == actionlib::SimpleClientGoalState::REJECTED && state == actionlib::SimpleClientGoalState::LOST)
-        {
-            m_is_running = false;
-            m_mode = 0;
-            m_mission_id = "";
-            m_mission_points = std::vector<geographic_msgs::GeoPoint>();
-            return false;
+void MiradorDriver::processMoveBaseGoal() {
+    if (m_is_running && m_mode == 2)
+    {
+        if (m_moveBaseClient.waitForResult(ros::Duration(0.5))) {
+            actionlib::SimpleClientGoalState state = m_moveBaseClient.getState();
+            if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
+            {
+                ROS_INFO("Goal reached");
+                setNextGoal(false);
+            }
+            if (state == actionlib::SimpleClientGoalState::ABORTED && state == actionlib::SimpleClientGoalState::REJECTED && state == actionlib::SimpleClientGoalState::LOST)
+            {
+                ROS_WARN("Error mission stopped");
+                m_is_running = false;
+                m_mode = 0;
+                m_mission_id = "";
+                m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+            }
         }
     }
-    return false;
 }

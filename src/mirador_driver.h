@@ -5,7 +5,7 @@
 // Standard
 #include <string>
 #include <cmath>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 
 // Custom ROS messages
 #include "mirador_driver/GeoPose.h"
@@ -85,6 +85,8 @@ class MiradorDriver
         void publishStatus();
 
         void publishCmdVel();
+
+        void processMoveBaseGoal();
         
         bool getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose);
 
