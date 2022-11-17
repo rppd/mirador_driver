@@ -5,8 +5,8 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     ros::NodeHandle private_n("~");
     
     // Parameters
-    private_n.param<bool>("orientation_ned", m_is_orientation_ned, false);
-    private_n.param<bool>("zero_altitude", m_is_zero_altitude, false);
+    private_n.param<bool>("is_orientation_ned", m_is_orientation_ned, false);
+    private_n.param<bool>("is_zero_altitude", m_is_zero_altitude, false);
     private_n.param<std::string>("utm_frame_id", m_utm_frame_id, "utm");
     private_n.param<std::string>("odom_frame_id", m_odom_frame_id, "odom");
     private_n.param<std::string>("base_link_frame_id", m_base_link_frame_id, "base_link");
@@ -89,32 +89,29 @@ void MiradorDriver::missionCallback(const mirador_driver::Mission& _mission)
             ROS_INFO("Guide mission launched");
             setGuide();
         }
-        else {
-            if (m_mode == 0)
-            {
-                switch (_mission.type) {
-                    case 2 :
-                        ROS_INFO("Route mission received");
-                        m_mode = _mission.type;
-                        m_mission_id = _mission.id;
-                        m_mission_points = _mission.points;
-                        break;
-                    case 3 :
-                        ROS_INFO("Exploration mission received");
-                        m_mode = _mission.type;
-                        m_mission_id = _mission.id;
-                        m_mission_points = _mission.points;
-                        break;
-                    default :
-                        ROS_WARN("Unknown mission type");
-                }
+        else if (m_mode == 0)
+        {
+            switch (_mission.type) {
+                case 2 :
+                    ROS_INFO("Route mission received");
+                    m_mode = _mission.type;
+                    m_mission_id = _mission.id;
+                    m_mission_points = _mission.points;
+                    break;
+                case 3 :
+                    ROS_INFO("Exploration mission received");
+                    m_mode = _mission.type;
+                    m_mission_id = _mission.id;
+                    m_mission_points = _mission.points;
+                    break;
+                default :
+                    ROS_WARN("Unknown mission type");
             }
         }
     }
     else {
         ROS_WARN("No GPS signal, impossible to perform mission");
     }
-    
 }
 
 void MiradorDriver::reportCallback(const mirador_driver::Report& _report)
@@ -270,48 +267,76 @@ void MiradorDriver::publishStatus()
 
 void MiradorDriver::publishCmdVel()
 {
-    if (m_publish_cmd_vel && m_signal_quality > 0) {
+    if (m_publish_cmd_vel) {
+        if (m_signal_quality > 0) {
+            geometry_msgs::PointStamped robot_point;
+            geometry_msgs::PointStamped guide_point;
 
-        geometry_msgs::PointStamped robot_point;
-        geometry_msgs::PointStamped guide_point;
+            latLongToUtm(m_position, robot_point);
+            latLongToUtm(m_mission_points.front(), guide_point);
 
-        latLongToUtm(m_position, robot_point);
-        latLongToUtm(m_mission_points.front(), guide_point);
+            Eigen::Vector3d x_robot(robot_point.point.x, robot_point.point.y, m_yaw);
+            Eigen::Vector3d x_guide(guide_point.point.x, guide_point.point.y, 0.0);
 
-        Eigen::Vector3d x_robot(robot_point.point.x, robot_point.point.y, m_yaw);
-        Eigen::Vector3d x_guide(guide_point.point.x, guide_point.point.y, 0.0);
+            Eigen::Matrix3d R;
+            R << cos(x_robot(2)), sin(x_robot(2)), 0,
+                -sin(x_robot(2)), cos(x_robot(2)), 0,
+                0, 0, 1;
 
-        Eigen::Matrix3d R;
-        R << cos(x_robot(2)), sin(x_robot(2)), 0,
-            -sin(x_robot(2)), cos(x_robot(2)), 0,
-            0, 0, 1;
+            Eigen::Vector3d x;
+            x = R * (x_guide - x_robot);
 
-        Eigen::Vector3d x;
-        x = R * (x_guide - x_robot);
+            if ((pow(x(0), 2) + pow(x(1), 2) > 4.0)) {
+                Eigen::Vector2d u;
 
-        if ((pow(x(0), 2) + pow(x(1), 2) > 4.0)) {
-            Eigen::Vector2d u;
+                if ((x(0) - abs(x(1)) + 1) > 0 || (x(0) > -3.0 && abs(x(1)) < 1)) {
+                    Eigen::Matrix2d A;
+                    A << -1, x(1),
+                        0, -x(0);
+                    Eigen::Vector2d w(1.0, 0); // Place the the carrot at x = 1 meter in front of the robot.
+                    u = A.inverse() * (w - x.head(2));
+                }
+                else {
+                    u(0) = 0;
+                    if (x(1) > 0) {
+                        u(1) = 1.0; // Rotate inplace to face the target.
+                    }
+                    else {
+                        u(1) = -1.0;
+                    }
+                }
 
-            if (x(0) > 0.0 || (x(0) > -3.0 && abs(x(1)) < 1.0)) {
-                Eigen::Matrix2d A;
-                A << -1, x(1),
-                    0, -x(0);
-                Eigen::Vector2d w(1.0, 0); // Place the the carrot at x = 1 meter in front of the robot.
-                u = A.inverse() * (w - x.head(2));
+                m_cmd_vel.linear.x = std::max(std::min(u(0), 1.0), -1.0);
+                m_cmd_vel.angular.z = std::max(std::min(u(1), 1.0), -1.0);
+                m_cmdVelPublisher.publish(m_cmd_vel);
             }
             else {
-                u(0) = 0;
-                u(1) = (atan2((x_guide - x_robot)(1), (x_guide - x_robot)(0))) / M_PI; // Rotate inplace to face the target.
+                ROS_INFO("Guide reached");
+                resetMission();
+                m_publish_cmd_vel = false;
             }
-
-            m_cmd_vel.linear.x = std::max(std::min(u(0), 1.0), -1.0);
-            m_cmd_vel.angular.z = std::max(std::min(u(1), 1.0), -1.0);
-            m_cmdVelPublisher.publish(m_cmd_vel);
         }
         else {
-            ROS_INFO("Guide reached");
-            resetMission();
-            m_publish_cmd_vel = false;
+            ROS_WARN("No signal, can't guide robot safely (Host is unreachable by ping command)");
+        }
+    }
+}
+
+void MiradorDriver::processMoveBaseGoal() {
+    if (m_is_running && m_mode == 2)
+    {
+        if (m_moveBaseClient.waitForResult(ros::Duration(0.5))) {
+            actionlib::SimpleClientGoalState state = m_moveBaseClient.getState();
+            if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
+            {
+                ROS_INFO("Goal reached");
+                setNextGoal(false);
+            }
+            if (state == actionlib::SimpleClientGoalState::ABORTED && state == actionlib::SimpleClientGoalState::REJECTED && state == actionlib::SimpleClientGoalState::LOST)
+            {
+                ROS_WARN("Error mission stopped");
+                resetMission();
+            }
         }
     }
 }
@@ -504,24 +529,5 @@ bool MiradorDriver::startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_
     {
         ROS_INFO("Failed to send goal");
         return false;
-    }
-}
-
-void MiradorDriver::processMoveBaseGoal() {
-    if (m_is_running && m_mode == 2)
-    {
-        if (m_moveBaseClient.waitForResult(ros::Duration(0.5))) {
-            actionlib::SimpleClientGoalState state = m_moveBaseClient.getState();
-            if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
-            {
-                ROS_INFO("Goal reached");
-                setNextGoal(false);
-            }
-            if (state == actionlib::SimpleClientGoalState::ABORTED && state == actionlib::SimpleClientGoalState::REJECTED && state == actionlib::SimpleClientGoalState::LOST)
-            {
-                ROS_WARN("Error mission stopped");
-                resetMission();
-            }
-        }
     }
 }
