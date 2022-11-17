@@ -5,7 +5,7 @@
 // Standard
 #include <string>
 #include <cmath>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 
 // Custom ROS messages
 #include "mirador_driver/GeoPose.h"
@@ -140,6 +140,7 @@ class MiradorDriver
         std::string m_e_stop_topic;
         int m_stream_method;
         std::vector<std::string> m_stream_address;
+        std::string m_stream_topic;
 
         // Mirador driver data
         int m_utm_zone;

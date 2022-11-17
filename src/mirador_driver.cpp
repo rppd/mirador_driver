@@ -29,6 +29,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     private_n.param<std::string>("e_stop_topic", m_e_stop_topic, "/e_stop");
     private_n.param<int>("stream_method", m_stream_method, int(0));
     private_n.param<std::vector<std::string>>("stream_address", m_stream_address, std::vector<std::string>());
+    private_n.param<std::string>("stream_topic", m_stream_topic, "/image");
 
     // Subscribers
     m_missionSubscriber = n.subscribe("/mirador/mission", 10, &MiradorDriver::missionCallback, this);
@@ -236,6 +237,7 @@ void MiradorDriver::flightStatusCallback(const std_msgs::Int8& _flight_status)
 {
     m_flight_status = _flight_status.data;
 }
+
 void MiradorDriver::cameraElevationCallback(const std_msgs::Float32& _camera_elevation)
 {
     m_camera_elevation =  _camera_elevation.data;
@@ -274,6 +276,7 @@ void MiradorDriver::publishStatus()
     status.e_stop = m_e_stop;
     status.stream_method = m_stream_method;
     status.stream_address = m_stream_address;
+    status.stream_topic = m_stream_topic;
 
     m_statusPublisher.publish(status);
 }

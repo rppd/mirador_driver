@@ -5,10 +5,10 @@
         <rosparam command="load" file="$(find mirador_driver)/config/mirador_driver_config.yaml" />
     </node>
 
-    <node pkg="rosping" type="rosping" name="rosping" args="11.0.0.1">
+    <!--<node pkg="rosping" type="rosping" name="rosping" args="147.250.35.110">
         <rosparam command="load" file="$(find mirador_driver)/config/rosping_config.yaml" />
         <remap from="ping/delay" to="ping"/>
-    </node>
+    </node>-->
 
-      <node pkg="topic_tools" type="relay_field" name="state_of_charge_relayer" args="/status /state_of_charge std_msgs/Float32  '{data: m.charge_estimate}' "/>
+    <!-- <node pkg="topic_tools" type="relay_field" name="state_of_charge_relayer" args="/status /state_of_charge std_msgs/Float32  '{data: m.charge_estimate}' "/> -->
 </launch>

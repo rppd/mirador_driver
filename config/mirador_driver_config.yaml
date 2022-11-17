@@ -1,18 +1,19 @@
-is_orientation_ned: false # Compass convention (NED / ENU): 0 for North with NED and 0 for East with ENU. Basically ROS compass value is ENU.
+is_orientation_ned: true # Compass convention (NED / ENU): 0 for North with NED and 0 for East with ENU. Basically ROS compass value is ENU.
 is_zero_altitude: false # Use for ground vehicle
 # utm_zone: "31n" # Specify UTM zone and hemisphere of robot usage. 31 for north of France zone (Paris) and "n" for North hemisphere per example.
 utm_frame_id: "utm"
 odom_frame_id: "odom"
 base_link_frame_id: "base_link"
 ping_topic: "/ping" # Topic of the ping or delay value in order to estimate signal quality
-state_of_charge_topic: "/state_of_charge"
-navsatfix_topic: "/imu/gps/filtered"
+state_of_charge_topic: "/battery"
+navsatfix_topic: "/gps"
 use_odometry: false # Specify if you prefer imu or odometry compass for yaw information.
-imu_topic: "/imu/data"
+imu_topic: "/imu"
 odometry_topic: "/odometry"
-flight_status_topic: "/flight_status"
-camera_elevation_topic: "/camera_elevation"
-camera_zoom_topic: "/camera_zoom"
+flight_status_topic: "/fly_status"
+camera_elevation_topic: "/control/cmd_cam"
+camera_zoom_topic: "/control/cmd_zoom"
 e_stop_topic: "/e_stop"
-stream_method: 0 # 0 for URL video stream method, 1 for WebRTC method
+stream_method: 2 # 0 for URL video stream method, 1 for WebRTC method, 2 for ROS topic
 m_stream_address: [] # Specify stream URL address in case of stream method 0. Parameter stream_method must be 0
+m_stream_topic: "/image/compressed" # Specify the topic of the ROS image. Parameter stream_method must be 2
