@@ -75,6 +75,8 @@ class MiradorDriver
 
         // -------------------- Functions --------------------
 
+        // Reset mission flags to default
+        void resetMission();
         // Perform guide mode: Go strait to the point, stop when range is acceptable
         bool setGuide();
         // Build next goal on the list and set it, "first" flag specify the goal setted is the first in the queue

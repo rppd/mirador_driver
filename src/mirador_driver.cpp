@@ -63,7 +63,6 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     m_publish_cmd_vel = false;
     m_mode = 0;
     m_mission_id = "";
-    m_is_running = false;
     m_state_of_charge = 0;
     m_flight_status = 0;
     m_camera_elevation = .0;
@@ -140,20 +139,14 @@ void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
 {
     switch (m_mode) {
         case 1 :
-            m_is_running = false;
-            m_mode = 0;
-            m_mission_id = "";
-            m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+            resetMission();
             m_publish_cmd_vel = false;
             ROS_INFO("Guide mission aborted");
             break;
         case 2 :
             try
             {
-                m_is_running = false;
-                m_mode = 0;
-                m_mission_id = "";
-                m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+                resetMission();
                 m_moveBaseClient.cancelGoal();
                 ROS_INFO("Route mission aborted");
             }
@@ -308,7 +301,7 @@ void MiradorDriver::publishCmdVel()
             }
             else {
                 u(0) = 0;
-                u(1) = (atan2((x_guide - x_robot)(1), (x_guide - x_robot)(0))) / M_PI;
+                u(1) = (atan2((x_guide - x_robot)(1), (x_guide - x_robot)(0))) / M_PI; // Rotate inplace to face the target.
             }
 
             m_cmd_vel.linear.x = std::max(std::min(u(0), 1.0), -1.0);
@@ -317,16 +310,21 @@ void MiradorDriver::publishCmdVel()
         }
         else {
             ROS_INFO("Guide reached");
-            m_is_running = false;
-            m_mode = 0;
-            m_mission_id = "";
-            m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+            resetMission();
             m_publish_cmd_vel = false;
         }
     }
 }
 
 // -------------------- Functions --------------------
+
+void MiradorDriver::resetMission()
+{
+    m_is_running = false;
+    m_mode = 0;
+    m_mission_id = "";
+    m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+}
 
 bool MiradorDriver::setGuide()
 {
@@ -337,10 +335,7 @@ bool MiradorDriver::setGuide()
         return true;
     }
     ROS_INFO("Empty mission guide gived");
-    m_is_running = false;
-    m_mode = 0;
-    m_mission_id = "";
-    m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+    resetMission();
     return false;
 }
 
@@ -361,10 +356,7 @@ bool MiradorDriver::setNextGoal(const bool& _first)
         else
         {
             ROS_WARN("Empty mission gived");
-            m_is_running = false;
-            m_mode = 0;
-            m_mission_id = "";
-            m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+            resetMission();
             return false;
         }
     }
@@ -383,10 +375,7 @@ bool MiradorDriver::setNextGoal(const bool& _first)
         else
         {
             ROS_INFO("Mission finished");
-            m_is_running = false;
-            m_mode = 0;
-            m_mission_id = "";
-            m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+            resetMission();
             return false;
         }
     }
@@ -531,10 +520,7 @@ void MiradorDriver::processMoveBaseGoal() {
             if (state == actionlib::SimpleClientGoalState::ABORTED && state == actionlib::SimpleClientGoalState::REJECTED && state == actionlib::SimpleClientGoalState::LOST)
             {
                 ROS_WARN("Error mission stopped");
-                m_is_running = false;
-                m_mode = 0;
-                m_mission_id = "";
-                m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+                resetMission();
             }
         }
     }
