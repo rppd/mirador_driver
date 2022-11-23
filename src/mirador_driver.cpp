@@ -312,8 +312,6 @@ void MiradorDriver::publishCmdVel()
             }
             else {
                 ROS_INFO("Guide reached");
-                resetMission();
-                m_publish_cmd_vel = false;
             }
         }
         else {
