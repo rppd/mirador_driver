@@ -1,0 +1,5 @@
+geographic_msgs/GeoPoseStamped[] area
+geographic_msgs/GeoPoseStamped start
+std_msgs/Float32 height
+---
+geographic_msgs/GeoPath path

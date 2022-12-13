@@ -1,9 +1,14 @@
 <?xml version="1.0"?>
 
 <launch>
-    <node pkg="mirador_driver" type="mirador_driver" name="mirador_driver">
+    <node pkg="mirador_driver" type="mirador_driver" name="mirador_driver" output="screen" >
         <rosparam command="load" file="$(find mirador_driver)/config/mirador_driver_config.yaml" />
     </node>
+
+    <include file="$(find boustrophedon_server)/launch/boustrophedon_server.launch" />
+
+    <!-- Boustrophedon generator Actionlib client -->
+    <node name="boustrophedon_client" pkg="boustrophedon_server" type="boustrophedon_planner_client" output="screen"/>
 
     <!--<node pkg="rosping" type="rosping" name="rosping" args="147.250.35.110">
         <rosparam command="load" file="$(find mirador_driver)/config/rosping_config.yaml" />

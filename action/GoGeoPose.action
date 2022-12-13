@@ -1,0 +1,10 @@
+# Goal definition:
+geographic_msgs/GeoPoint[] path
+
+---
+# Result definition:
+geographic_msgs/GeoPoint destination
+
+---
+# Feedback definition:
+std_msgs/Int8 id_next_target

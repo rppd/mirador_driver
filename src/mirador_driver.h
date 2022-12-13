@@ -7,12 +7,6 @@
 #include <cmath>
 #include <eigen3/Eigen/Dense>
 
-// Custom ROS messages
-#include "mirador_driver/GeoPose.h"
-#include "mirador_driver/Mission.h"
-#include "mirador_driver/Report.h"
-#include "mirador_driver/Status.h"
-
 // ROS
 #include <std_msgs/Bool.h>
 #include <std_msgs/Int8.h>
@@ -24,6 +18,7 @@
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/QuaternionStamped.h>
 #include <geographic_msgs/GeoPoint.h>
+#include <geographic_msgs/GeoPoseStamped.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <sensor_msgs/Imu.h>
 #include <nav_msgs/Odometry.h>
@@ -33,11 +28,19 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
+// Custom ROS messages
+#include "mirador_driver/GeoPose.h"
+#include "mirador_driver/Mission.h"
+#include "mirador_driver/Report.h"
+#include "mirador_driver/Status.h"
+#include "mirador_driver/ConvertGPSToPath.h"
+#include "mirador_driver/GoGeoPoseAction.h"
+
 // Geographic Lib
 #include <GeographicLib/LocalCartesian.hpp>
 #include <GeographicLib/UTMUPS.hpp>
 
-typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
+typedef actionlib::SimpleActionClient<mirador_driver::GoGeoPoseAction> GoGeoPoseClient;
 
 class MiradorDriver
 {
@@ -50,6 +53,8 @@ class MiradorDriver
         void missionCallback(const mirador_driver::Mission& _mission);
         // Message containing mission report sent from anyone
         void reportCallback(const mirador_driver::Report& _report);
+        // Generate boustrophedon trajetctory(input: Geopose Area, output: Geopose path)
+        std::vector<geographic_msgs::GeoPoint> boustrophedonGeneration(std::vector<geographic_msgs::GeoPoint> _points);
         // Build next goal and init waypoint following
         void launchMissionCallback(const std_msgs::Empty& _empty);
         // Stop mission and reset parameters
@@ -78,9 +83,10 @@ class MiradorDriver
         // Perform guide mode: Go strait to the point, stop when range is acceptable
         bool setGuide();
         // Build next goal on the list and set it, "first" flag specify the goal setted is the first in the queue
-        bool setNextGoal(const bool& _first);
+        // bool setNextGoal(const bool& _first);
         // Start action move base goal with the specified target pose
-        bool startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose);
+        // bool startGoGeoPose(const geometry_msgs::PoseStamped& _target_pose);
+        bool startGoGeoPose();
         // Simply publish Mirador status message
         void publishStatus();
 
@@ -113,11 +119,17 @@ class MiradorDriver
         ros::Subscriber m_eStopSubscriber;
 
         // Action Client
-        MoveBaseClient m_moveBaseClient;
+        GoGeoPoseClient m_goGeoPoseClient;
         
         // Publishers
         ros::Publisher m_statusPublisher;
+        ros::Publisher m_abortPublisher;
         ros::Publisher m_cmdVelPublisher;
+        ros::Publisher m_takeOffLandPublisher;
+
+        //Services
+        ros::ServiceClient m_convertGPSToPathClient;
+
 
         // tf Listener
         tf2_ros::Buffer m_tf2_buffer;
@@ -141,6 +153,7 @@ class MiradorDriver
         int m_stream_method;
         std::vector<std::string> m_stream_address;
         std::string m_stream_topic;
+        std_msgs::Bool m_tol;
 
         // Mirador driver data
         int m_utm_zone;
