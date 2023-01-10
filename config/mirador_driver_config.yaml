@@ -17,3 +17,4 @@ e_stop_topic: "/e_stop"
 stream_method: 2 # 0 for URL video stream method, 1 for WebRTC method, 2 for ROS topic
 m_stream_address: [] # Specify stream URL address in case of stream method 0. Parameter stream_method must be 0
 m_stream_topic: "/image/compressed" # Specify the topic of the ROS image. Parameter stream_method must be 2
+m_mission_context_topic : "mission/mission_context" # Specify the topic of the detected QRC and points of interest list

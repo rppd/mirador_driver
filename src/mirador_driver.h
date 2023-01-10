@@ -33,6 +33,8 @@
 #include "mirador_driver/Mission.h"
 #include "mirador_driver/Report.h"
 #include "mirador_driver/Status.h"
+#include "mirador_driver/MissionContext.h"
+#include "mirador_driver/StrategicPoint.h"
 #include "mirador_driver/ConvertGPSToPath.h"
 #include "mirador_driver/GoGeoPoseAction.h"
 
@@ -78,6 +80,8 @@ class MiradorDriver
 
         void eStopCallback(const std_msgs::Bool& _e_stop);
 
+        void missionContextCallback(const mirador_driver::MissionContext& _mission_context);
+
         // -------------------- Functions --------------------
 
         // Perform guide mode: Go strait to the point, stop when range is acceptable
@@ -117,6 +121,7 @@ class MiradorDriver
         ros::Subscriber m_cameraElevationSubscriber;
         ros::Subscriber m_cameraZoomSubscriber;
         ros::Subscriber m_eStopSubscriber;
+        ros::Subscriber m_mission_contextSubscriber;
 
         // Action Client
         GoGeoPoseClient m_goGeoPoseClient;
@@ -154,6 +159,7 @@ class MiradorDriver
         std::vector<std::string> m_stream_address;
         std::string m_stream_topic;
         std_msgs::Bool m_tol;
+        std::string m_mission_context_topic;
 
         // Mirador driver data
         int m_utm_zone;
@@ -176,4 +182,5 @@ class MiradorDriver
         float m_camera_elevation;
         int m_camera_zoom;
         bool m_e_stop;
+        mirador_driver::MissionContext m_mission_context;
 };

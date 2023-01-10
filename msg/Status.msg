@@ -17,6 +17,7 @@ uint8 signal_quality
 mirador_driver/GeoPose pose
 uint8 mode
 mirador_driver/Mission mission
+mirador_driver/MissionContext mission_context
 bool is_running
 uint8 state_of_charge
 uint8 flight_status

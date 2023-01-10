@@ -5,8 +5,8 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_goGeoPoseClient("anafi_base
     ros::NodeHandle private_n("~");
     
     // Parameters
-    private_n.param<bool>("orientation_ned", m_is_orientation_ned, false);
-    private_n.param<bool>("zero_altitude", m_is_zero_altitude, false);
+    private_n.param<bool>("is_orientation_ned", m_is_orientation_ned, false);
+    private_n.param<bool>("is_zero_altitude", m_is_zero_altitude, false);
     private_n.param<std::string>("utm_frame_id", m_utm_frame_id, "utm");
     private_n.param<std::string>("odom_frame_id", m_odom_frame_id, "odom");
     private_n.param<std::string>("base_link_frame_id", m_base_link_frame_id, "base_link");
@@ -30,6 +30,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_goGeoPoseClient("anafi_base
     private_n.param<int>("stream_method", m_stream_method, int(0));
     private_n.param<std::vector<std::string>>("stream_address", m_stream_address, std::vector<std::string>());
     private_n.param<std::string>("stream_topic", m_stream_topic, "/image");
+    private_n.param<std::string>("mission_context_topic", m_mission_context_topic, "mission/mission_context");
 
     // Subscribers
     m_missionSubscriber = n.subscribe("/mirador/mission", 10, &MiradorDriver::missionCallback, this);
@@ -49,10 +50,11 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_goGeoPoseClient("anafi_base
     m_cameraElevationSubscriber = n.subscribe(m_camera_elevation_topic, 10, &MiradorDriver::cameraElevationCallback, this);
     m_cameraZoomSubscriber = n.subscribe(m_camera_zoom_topic, 10, &MiradorDriver::cameraZoomCallback, this);
     m_eStopSubscriber = n.subscribe(m_e_stop_topic, 10, &MiradorDriver::eStopCallback, this);
+    m_mission_contextSubscriber = n.subscribe(m_mission_context_topic, 10, &MiradorDriver::missionContextCallback, this);
 
     // Publishers
     m_statusPublisher = n.advertise<mirador_driver::Status>("/mirador/status", 10);
-    m_abortPublisher = n.advertise<std_msgs::Empty>("/mirador/abortMove", 10);
+    m_abortPublisher = n.advertise<std_msgs::Empty>("/mirador/abort", 10);
     m_cmdVelPublisher = n.advertise<geometry_msgs::Twist>("control/cmd_vel", 10);
     m_takeOffLandPublisher = n.advertise<std_msgs::Bool>("hmi/cmd_TOL", 10);
 
@@ -76,6 +78,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_goGeoPoseClient("anafi_base
     m_camera_zoom = 0;
     m_e_stop = false;
     m_tol = std_msgs::Bool();
+    m_mission_context = mirador_driver::MissionContext();
 
     ros::Time::init();
 };
@@ -306,6 +309,11 @@ void MiradorDriver::eStopCallback(const std_msgs::Bool& _e_stop)
     m_e_stop = _e_stop.data;
 }
 
+void MiradorDriver::missionContextCallback(const mirador_driver::MissionContext& _mission_context)
+{
+    m_mission_context = _mission_context;
+}
+
 // -------------------- Publishers --------------------
 
 void MiradorDriver::publishStatus()
@@ -330,6 +338,7 @@ void MiradorDriver::publishStatus()
     status.stream_method = m_stream_method;
     status.stream_address = m_stream_address;
     status.stream_topic = m_stream_topic;
+    status.mission_context = m_mission_context;
 
     m_statusPublisher.publish(status);
 }
