@@ -12,6 +12,8 @@
 #include "mirador_driver/Mission.h"
 #include "mirador_driver/Report.h"
 #include "mirador_driver/Status.h"
+#include "mirador_driver/MissionContext.h"
+#include "mirador_driver/StrategicPoint.h"
 
 // ROS
 #include <std_msgs/Bool.h>
@@ -73,6 +75,8 @@ class MiradorDriver
 
         void eStopCallback(const std_msgs::Bool& _e_stop);
 
+        void missionContextCallback(const mirador_driver::MissionContext& _mission_context);
+
         // -------------------- Functions --------------------
 
         // Reset mission flags to default
@@ -115,6 +119,7 @@ class MiradorDriver
         ros::Subscriber m_cameraElevationSubscriber;
         ros::Subscriber m_cameraZoomSubscriber;
         ros::Subscriber m_eStopSubscriber;
+        ros::Subscriber m_mission_contextSubscriber;
 
         // Action Client
         MoveBaseClient m_moveBaseClient;
@@ -144,6 +149,8 @@ class MiradorDriver
         std::string m_e_stop_topic;
         int m_stream_method;
         std::vector<std::string> m_stream_address;
+        std::string m_stream_topic;
+        std::string m_mission_context_topic;
 
         // Mirador driver data
         int m_utm_zone;
@@ -166,4 +173,6 @@ class MiradorDriver
         float m_camera_elevation;
         int m_camera_zoom;
         bool m_e_stop;
+        mirador_driver::MissionContext m_mission_context;
+
 };

@@ -29,6 +29,8 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     private_n.param<std::string>("e_stop_topic", m_e_stop_topic, "/e_stop");
     private_n.param<int>("stream_method", m_stream_method, int(0));
     private_n.param<std::vector<std::string>>("stream_address", m_stream_address, std::vector<std::string>());
+    private_n.param<std::string>("stream_topic", m_stream_topic, "/image/compressed");
+    private_n.param<std::string>("mission_context_topic", m_mission_context_topic, "mission/mission_context");
 
     // Subscribers
     m_missionSubscriber = n.subscribe("/mirador/mission", 10, &MiradorDriver::missionCallback, this);
@@ -48,6 +50,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     m_cameraElevationSubscriber = n.subscribe(m_camera_elevation_topic, 10, &MiradorDriver::cameraElevationCallback, this);
     m_cameraZoomSubscriber = n.subscribe(m_camera_zoom_topic, 10, &MiradorDriver::cameraZoomCallback, this);
     m_eStopSubscriber = n.subscribe(m_e_stop_topic, 10, &MiradorDriver::eStopCallback, this);
+    m_mission_contextSubscriber = n.subscribe(m_mission_context_topic, 10, &MiradorDriver::missionContextCallback, this);
 
     // Publishers
     m_statusPublisher = n.advertise<mirador_driver::Status>("/mirador/status", 10);
@@ -68,6 +71,8 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_moveBaseClient("move_base",
     m_camera_elevation = .0;
     m_camera_zoom = 0;
     m_e_stop = false;
+    m_mission_context = mirador_driver::MissionContext();
+
 
     ros::Time::init();
 };
@@ -238,6 +243,11 @@ void MiradorDriver::eStopCallback(const std_msgs::Bool& _e_stop)
     m_e_stop = _e_stop.data;
 }
 
+void MiradorDriver::missionContextCallback(const mirador_driver::MissionContext& _mission_context)
+{
+    m_mission_context = _mission_context;
+}
+
 // -------------------- Publishers --------------------
 
 void MiradorDriver::publishStatus()
@@ -261,6 +271,8 @@ void MiradorDriver::publishStatus()
     status.e_stop = m_e_stop;
     status.stream_method = m_stream_method;
     status.stream_address = m_stream_address;
+    status.stream_topic = m_stream_topic;
+    status.mission_context = m_mission_context;
 
     m_statusPublisher.publish(status);
 }

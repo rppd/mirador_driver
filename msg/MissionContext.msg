@@ -1,0 +1,3 @@
+Header header
+string context_id
+mirador_driver/StrategicPoint[] strategic_points
