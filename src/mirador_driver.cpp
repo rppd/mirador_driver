@@ -29,7 +29,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_goGeoPoseClient("anafi_base
     private_n.param<std::string>("e_stop_topic", m_e_stop_topic, "/e_stop");
     private_n.param<int>("stream_method", m_stream_method, int(0));
     private_n.param<std::vector<std::string>>("stream_address", m_stream_address, std::vector<std::string>());
-    private_n.param<std::string>("stream_topic", m_stream_topic, "/image");
+    private_n.param<std::string>("stream_topic", m_stream_topic, "/image/compressed");
     private_n.param<std::string>("mission_context_topic", m_mission_context_topic, "mission/mission_context");
 
     // Subscribers
@@ -72,7 +72,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_goGeoPoseClient("anafi_base
     m_mode = 0;
     m_mission_id = "";
     m_is_running = false;
-    m_state_of_charge = 0;
+    m_state_of_charge = .0;
     m_flight_status = 0;
     m_camera_elevation = .0;
     m_camera_zoom = 0;
@@ -240,7 +240,8 @@ void MiradorDriver::pingCallback(const std_msgs::Float64& _delay)
 
 void MiradorDriver::stateOfChargeCallback(const std_msgs::Float32& _soc)
 {
-    m_state_of_charge = std::min(std::max(int(round(100 * _soc.data)), 0), 100);
+    m_state_of_charge = int(round(_soc.data));
+    //m_state_of_charge = std::min(std::max(int(round(100 * _soc.data)), 0), 20);
 }
 
 void MiradorDriver::navSatFixCallback(const sensor_msgs::NavSatFix& _navsatfix)
