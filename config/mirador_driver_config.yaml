@@ -1,16 +1,17 @@
-is_orientation_ned: true # Compass convention (NED / ENU): 0 for North with NED and 0 for East with ENU. Basically ROS compass value is ENU.
+is_orientation_ned: false # Compass convention (NED / ENU): 0 for North with NED and 0 for East with ENU. Basically ROS compass value is ENU.
 is_zero_altitude: false # Use for ground vehicle
 # utm_zone: "31n" # Specify UTM zone and hemisphere of robot usage. 31 for north of France zone (Paris) and "n" for North hemisphere per example.
 utm_frame_id: "utm"
 odom_frame_id: "odom"
 base_link_frame_id: "base_link"
 ping_topic: "/ping" # Topic of the ping or delay value in order to estimate signal quality
-state_of_charge_topic: "/battery"
-navsatfix_topic: "/gps"
+state_of_charge_topic: "mavros/battery"
+navsatfix_topic: "/mavros/global_position/raw/fix"
+relalt_topic: "/mavros/global_position/rel_alt"
 use_odometry: false # Specify if you prefer imu or odometry compass for yaw information.
-imu_topic: "/imu"
+imu_topic: "/mavros/imu/data"
 odometry_topic: "/odometry"
-flight_status_topic: "/fly_status"
+flight_status_topic: "/mavros/state"
 camera_elevation_topic: "/control/cmd_cam"
 camera_zoom_topic: "/control/cmd_zoom"
 e_stop_topic: "/e_stop"

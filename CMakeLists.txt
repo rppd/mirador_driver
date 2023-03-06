@@ -17,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   tf2_ros
-  
+  mavros
 )
 
 ## Find GeographicLib
@@ -123,7 +123,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mirador_driver
-  CATKIN_DEPENDS actionlib_msgs geographic_msgs geometry_msgs move_base_msgs roscpp sensor_msgs std_msgs tf2_ros tf2_geometry_msgs message_runtime
+  CATKIN_DEPENDS actionlib_msgs geographic_msgs geometry_msgs move_base_msgs roscpp sensor_msgs std_msgs tf2_ros tf2_geometry_msgs message_runtime mavros
   #INCLUDE_DIRS
   DEPENDS system_lib GeographicLib
 )
