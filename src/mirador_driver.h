@@ -45,6 +45,7 @@
 #include <mavros_msgs/CommandTOL.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/CommandBool.h>
+#include <mavros_msgs/WaypointReached.h>
 
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/CommandHome.h>
@@ -54,8 +55,6 @@
 // Geographic Lib
 #include <GeographicLib/LocalCartesian.hpp>
 #include <GeographicLib/UTMUPS.hpp>
-
-typedef actionlib::SimpleActionClient<mirador_driver::GoGeoPoseAction> GoGeoPoseClient;
 
 class MiradorDriver
 {
@@ -97,6 +96,10 @@ class MiradorDriver
 
         void missionContextCallback(const mirador_driver::MissionContext& _mission_context);
 
+        void waypointReachedCallback(const mavros_msgs::WaypointReached& _waypoint_reached);
+
+        void takeOffLandCallback(const std_msgs::Bool& _tol);
+
         // -------------------- Functions --------------------
 
         // Perform guide mode: Go strait to the point, stop when range is acceptable
@@ -106,6 +109,13 @@ class MiradorDriver
         // Start action move base goal with the specified target pose
         // bool startGoGeoPose(const geometry_msgs::PoseStamped& _target_pose);
         bool startGoGeoPose();
+
+        //Clear previous waypoints, used before any call of waypoint push
+        bool clearWP();
+
+        //Change the flight mode of the drone
+        bool setMode(const std::string _flight_mode);
+
         // Simply publish Mirador status message
         void publishStatus();
 
@@ -138,9 +148,8 @@ class MiradorDriver
         ros::Subscriber m_cameraZoomSubscriber;
         ros::Subscriber m_eStopSubscriber;
         ros::Subscriber m_mission_contextSubscriber;
-
-        // Action Client
-        GoGeoPoseClient m_goGeoPoseClient;
+        ros::Subscriber m_waypointReachedSubscriber;
+        ros::Subscriber m_takeOffLandSubscriber;
         
         // Publishers
         ros::Publisher m_statusPublisher;
@@ -152,7 +161,7 @@ class MiradorDriver
         ros::ServiceClient m_convertGPSToPathClient;
         ros::ServiceClient m_wpClearService;
         ros::ServiceClient m_wpPushService;
-        ros::ServiceClient m_takeoffService;
+        ros::ServiceClient m_takeOffLandService;
         ros::ServiceClient m_flightModeService;
         ros::ServiceClient m_armService;
         
@@ -205,5 +214,6 @@ class MiradorDriver
         float m_camera_elevation;
         int m_camera_zoom;
         bool m_e_stop;
+        mavros_msgs::Waypoint empty_wp;
         mirador_driver::MissionContext m_mission_context;
 };

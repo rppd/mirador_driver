@@ -1,6 +1,6 @@
 #include "mirador_driver.h"
 
-MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_goGeoPoseClient("anafi_base", true)
+MiradorDriver::MiradorDriver(ros::NodeHandle& n)
 {
     ros::NodeHandle private_n("~");
     
@@ -53,12 +53,13 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_goGeoPoseClient("anafi_base
     m_cameraZoomSubscriber = n.subscribe(m_camera_zoom_topic, 10, &MiradorDriver::cameraZoomCallback, this);
     m_eStopSubscriber = n.subscribe(m_e_stop_topic, 10, &MiradorDriver::eStopCallback, this);
     m_mission_contextSubscriber = n.subscribe(m_mission_context_topic, 10, &MiradorDriver::missionContextCallback, this);
+    m_waypointReachedSubscriber = n.subscribe("/mavros/mission/reached", 10, &MiradorDriver::waypointReachedCallback, this);
+    m_takeOffLandSubscriber = n.subscribe("hmi/cmd_TOL", 10, &MiradorDriver::takeOffLandCallback, this);
 
     // Publishers
     m_statusPublisher = n.advertise<mirador_driver::Status>("/mirador/status", 10);
     m_abortPublisher = n.advertise<std_msgs::Empty>("/mirador/abort", 10);
     m_cmdVelPublisher = n.advertise<geometry_msgs::Twist>("control/cmd_vel", 10);
-    m_takeOffLandPublisher = n.advertise<std_msgs::Bool>("hmi/cmd_TOL", 10);
 
     // Services
     m_convertGPSToPathClient = n.serviceClient<mirador_driver::ConvertGPSToPath>("boustrophedon_gps");
@@ -66,7 +67,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_goGeoPoseClient("anafi_base
         //Mavros services
     m_wpClearService = n.serviceClient<mavros_msgs::WaypointClear>("/mavros/mission/clear");
     m_wpPushService = n.serviceClient<mavros_msgs::WaypointPush>("/mavros/mission/push");
-    m_takeoffService = n.serviceClient<mavros_msgs::CommandTOL>("mavros/cmd/takeoff");
+    m_takeOffLandService = n.serviceClient<mavros_msgs::CommandTOL>("mavros/cmd/takeoff");
     m_flightModeService = n.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
     m_armService = n.serviceClient<mavros_msgs::CommandBool>("mavros/cmd/arming");
 
@@ -84,7 +85,6 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_goGeoPoseClient("anafi_base
     m_publish_cmd_vel = false;
     m_mode = 0;
     m_mission_id = "";
-    m_is_running = false;
     m_state_of_charge = 0;
     m_flight_status = 0;
     m_camera_elevation = .0;
@@ -118,10 +118,10 @@ void MiradorDriver::missionCallback(const mirador_driver::Mission& _mission)
             {
                 switch (_mission.type) {
                     case 2 :
-                        ROS_INFO("Route mission received");
                         m_mode = _mission.type;
                         m_mission_id = _mission.id;
                         m_mission_points = _mission.points;
+                        ROS_INFO("Route mission received: %d WP", (int)m_mission_points.size());                     
                         break;
                     case 3 :
                         ROS_INFO("Exploration mission received");
@@ -188,7 +188,13 @@ void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
     {
         m_is_running = true;
         ROS_INFO("Route mission launched");
+        // Clear wp charged in the autopilot (can't do it in auto mode)
+        setMode("GUIDED");
+        clearWP();
+        //Push the WP to the Autopilot and set the mode to AUTO to launch the mission
         startGoGeoPose();
+        
+        
     }
 }
 
@@ -201,6 +207,7 @@ void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
                 m_mission_id = "";
                 m_mission_points = std::vector<geographic_msgs::GeoPoint>();
                 m_publish_cmd_vel = false;
+                setMode("BRAKE");
                 ROS_INFO("Guide mission aborted");
         }else if(m_mode == 2){
                 try
@@ -208,9 +215,10 @@ void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
                     m_is_running = false;
                     m_mode = 0;
                     m_mission_id = "";
+                    // Reset mission point, brake the drone and clear the WP in the Autopilot
                     m_mission_points = std::vector<geographic_msgs::GeoPoint>();
-                    m_goGeoPoseClient.cancelAllGoals();
-                    m_goGeoPoseClient.stopTrackingGoal();
+                    setMode("BRAKE");
+                    clearWP();
                     m_abortPublisher.publish(std_msgs::Empty());
                     ROS_INFO("Route mission aborted");
                 }
@@ -224,9 +232,10 @@ void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
                     m_is_running = false;
                     m_mode = 0;
                     m_mission_id = "";
+                    // Reset mission point, brake the drone and clear the WP in the Autopilot
                     m_mission_points = std::vector<geographic_msgs::GeoPoint>();
-                    m_goGeoPoseClient.cancelAllGoals();
-                    m_goGeoPoseClient.stopTrackingGoal();
+                    setMode("BRAKE");
+                    clearWP();
                     m_abortPublisher.publish(std_msgs::Empty());
                     ROS_INFO("Exploration mission aborted");
                 }
@@ -325,11 +334,59 @@ void MiradorDriver::cameraZoomCallback(const std_msgs::Int8&  _camera_zoom)
 void MiradorDriver::eStopCallback(const std_msgs::Bool& _e_stop)
 {
     m_e_stop = _e_stop.data;
+    setMode("BRAKE");
 }
 
 void MiradorDriver::missionContextCallback(const mirador_driver::MissionContext& _mission_context)
 {
     m_mission_context = _mission_context;
+}
+
+void MiradorDriver::waypointReachedCallback(const mavros_msgs::WaypointReached& _waypoint_reached){
+    if(_waypoint_reached.wp_seq <= (int)m_mission_points.size()){
+        ROS_INFO(" %d / %d WP reached", _waypoint_reached.wp_seq,(int)m_mission_points.size());
+    }
+    
+    //If the last WP has been reached, the drone go to idle mode
+    if(_waypoint_reached.wp_seq == (int)m_mission_points.size()){
+        m_mode = 0;
+        m_is_running = false;
+        ROS_INFO("Route mission completed");
+    }
+}
+
+void MiradorDriver::takeOffLandCallback(const std_msgs::Bool& _tol){
+    if(_tol.data){
+        
+        setMode("GUIDED");
+
+        ros::service::waitForService("/mavros/cmd/arming", ros::Duration(5));
+        ros::service::waitForService("/mavros/cmd/takeoff", ros::Duration(5));
+        
+        mavros_msgs::CommandBool::Request req_bool;
+        mavros_msgs::CommandBool::Response resp_bool;
+
+        req_bool.value = true;
+
+        mavros_msgs::CommandTOL::Request req_tol;
+        mavros_msgs::CommandTOL::Response resp_tol;
+
+        req_tol.altitude = 10.0;
+
+        // Call the arming service
+        //bool success_arm = 
+        m_armService.call(req_bool,resp_bool);
+
+        // Call the take off service
+        //bool success_tol = 
+        m_takeOffLandService.call(req_tol,resp_tol);
+
+        ROS_INFO("Taking Off");
+    }else{
+        setMode("LAND");
+
+        ROS_INFO("Landing");
+    }
 }
 
 // -------------------- Publishers --------------------
@@ -537,10 +594,6 @@ bool MiradorDriver::startGoGeoPose() {
     if(m_flight_status == 0){
     }
 
-    ROS_INFO("Sending goal");
-
-    mavros_msgs::Waypoint empty_wp;
-
     for(int i = 0; i < m_mission_points.size(); i++){
         //Only the first wp is the current one
 
@@ -556,21 +609,56 @@ bool MiradorDriver::startGoGeoPose() {
         if (i == 0){m_mavros_wp.push_back(empty_wp);}
         
         m_mavros_wp.push_back(empty_wp);
+    
     }
 
-    mavros_msgs::WaypointPush::Request req;
-    mavros_msgs::WaypointPush::Response resp;
+        mavros_msgs::WaypointPush::Request req;
+        mavros_msgs::WaypointPush::Response resp;
 
     req.start_index = 0;
     req.waypoints = m_mavros_wp;
 
-    //ros::service::waitForService("/mavros/mission/push", ros::Duration(5));
+    // Wait for the push service to be up
+    ros::service::waitForService("/mavros/mission/push", ros::Duration(5));
 
+    // Call the push service
     bool success = m_wpPushService.call(req,resp);
 
-    ROS_INFO("WP pushed");
-
+    ROS_INFO("Route mission pushed");
+    setMode("AUTO");
+    
+    //Clear the local list of waypoints
     m_mavros_wp.clear();
 
     return 0;
+}
+
+bool MiradorDriver::clearWP(){
+
+    mavros_msgs::WaypointClear::Request req;
+    mavros_msgs::WaypointClear::Response resp;
+
+    // Wait for the clear service to be up
+    ros::service::waitForService("/mavros/mission/clear", ros::Duration(5));
+
+    // Call the clear service
+    bool success = m_wpClearService.call(req,resp);
+
+    return success;
+}
+
+bool MiradorDriver::setMode(const std::string _flight_mode){
+
+    mavros_msgs::SetMode::Request req;
+    mavros_msgs::SetMode::Response resp;
+
+    req.custom_mode = _flight_mode;
+
+    // Wait for the set mode service to be up
+    ros::service::waitForService("mavros/set_mode", ros::Duration(5));
+
+    // Call the set mode service
+    bool success = m_flightModeService.call(req,resp);
+
+    return success;
 }
