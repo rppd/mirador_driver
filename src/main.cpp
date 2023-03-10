@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     while (ros::ok())
     {
         MiradorDriver.publishStatus();
-        MiradorDriver.publishCmdVel();
+        //MiradorDriver.publishCmdVel();
         r.sleep();
         ros::spinOnce();
     }

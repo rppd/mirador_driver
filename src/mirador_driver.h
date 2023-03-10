@@ -5,6 +5,7 @@
 // Standard
 #include <string>
 #include <cmath>
+#include <math.h>
 #include <eigen3/Eigen/Dense>
 
 // ROS
@@ -50,6 +51,7 @@
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/CommandHome.h>
 #include <mavros_msgs/Waypoint.h>
+#include <mavros_msgs/PositionTarget.h>
 
 
 // Geographic Lib
@@ -100,6 +102,12 @@ class MiradorDriver
 
         void takeOffLandCallback(const std_msgs::Bool& _tol);
 
+        void setRTHCallback(const std_msgs::Empty& _empty);
+
+        void reachRTHCallback(const std_msgs::Empty& _empty);
+
+        void cmdVelCallback(const geometry_msgs::Twist& _cmd_vel);
+
         // -------------------- Functions --------------------
 
         // Perform guide mode: Go strait to the point, stop when range is acceptable
@@ -118,8 +126,6 @@ class MiradorDriver
 
         // Simply publish Mirador status message
         void publishStatus();
-
-        void publishCmdVel();
         
         bool getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose);
 
@@ -150,6 +156,9 @@ class MiradorDriver
         ros::Subscriber m_mission_contextSubscriber;
         ros::Subscriber m_waypointReachedSubscriber;
         ros::Subscriber m_takeOffLandSubscriber;
+        ros::Subscriber m_setRTHSubscriber;
+        ros::Subscriber m_reachRTHSubscriber;
+        ros::Subscriber m_cmdVelSubscriber;
         
         // Publishers
         ros::Publisher m_statusPublisher;
@@ -164,6 +173,8 @@ class MiradorDriver
         ros::ServiceClient m_takeOffLandService;
         ros::ServiceClient m_flightModeService;
         ros::ServiceClient m_armService;
+        ros::ServiceClient m_setRTHService;
+
         
         // tf Listener
         tf2_ros::Buffer m_tf2_buffer;
@@ -216,4 +227,5 @@ class MiradorDriver
         bool m_e_stop;
         mavros_msgs::Waypoint empty_wp;
         mirador_driver::MissionContext m_mission_context;
+        mavros_msgs::PositionTarget position_target;
 };
