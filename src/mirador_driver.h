@@ -210,6 +210,7 @@ class MiradorDriver
         std::vector<geographic_msgs::GeoPoint> m_mission_points;
         std::vector<mavros_msgs::Waypoint> m_mavros_wp;
         std::string m_mission_id;
+        std::string m_state_mode;
         mirador_driver::Report m_report;
         int m_sequence;
         int m_signal_quality;

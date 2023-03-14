@@ -24,7 +24,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n)
     else {
         private_n.param<std::string>("imu_topic", m_imu_topic, "/imu");
     }
-    private_n.param<std::string>("flight_status_topic", m_flight_status_topic, "/mavros/extended_state");
+    private_n.param<std::string>("flight_status_topic", m_flight_status_topic, "/mavros/state");
     private_n.param<std::string>("camera_elevation_topic", m_camera_elevation_topic, "/camera_elevation");
     private_n.param<std::string>("camera_zoom_topic", m_camera_zoom_topic, "/camera_zoom");
     private_n.param<std::string>("e_stop_topic", m_e_stop_topic, "/e_stop");
@@ -88,6 +88,7 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n)
     m_yaw = .0;
     m_publish_cmd_vel = false;
     m_mode = 0;
+    m_state_mode = "GUIDED";
     m_mission_id = "";
     m_state_of_charge = 0;
     m_flight_status = 0;
@@ -99,6 +100,10 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n)
 
     position_target.coordinate_frame = 8;
     position_target.type_mask = 3;
+
+    //Mode Init
+    setMode("GUIDED");
+    clearWP();
 
     ros::Time::init();
 };
@@ -195,9 +200,8 @@ void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
     {
         m_is_running = true;
         ROS_INFO("Route mission launched");
-        // Clear wp charged in the autopilot (can't do it in auto mode)
-        setMode("GUIDED");
-        clearWP();
+        
+        
         //Push the WP to the Autopilot and set the mode to AUTO to launch the mission
         startGoGeoPose();
         
@@ -326,6 +330,8 @@ void MiradorDriver::odometryCallback(const nav_msgs::Odometry& _odometry)
 void MiradorDriver::flightStatusCallback(const mavros_msgs::State& _flight_status)
 { 
     m_flight_status = status_tab[_flight_status.system_status];
+    m_state_mode = _flight_status.mode;
+    //ROS_INFO("State: %s", m_state_mode.c_str());
 }
 
 void MiradorDriver::cameraElevationCallback(const std_msgs::Float32& _camera_elevation)
@@ -423,6 +429,10 @@ void MiradorDriver::reachRTHCallback(const std_msgs::Empty& _empty){
 
 void MiradorDriver::cmdVelCallback(const geometry_msgs::Twist& _cmd_vel){
 
+    if(m_state_mode != "GUIDED"){
+        setMode("GUIDED");
+    }
+
     position_target.velocity.x =   _cmd_vel.linear.x * 0.5;
     position_target.velocity.y =   -_cmd_vel.linear.y * 0.5;
     position_target.velocity.z =   _cmd_vel.linear.z * 0.05;
@@ -465,18 +475,22 @@ void MiradorDriver::publishStatus()
 
 bool MiradorDriver::setGuide()
 {
-    if (m_mission_points.size() > 0)
+    if (m_mission_points.size() == 1)
     {
         ROS_INFO("Setting guide");
-        m_publish_cmd_vel = true;
+        startGoGeoPose();     
+        m_mode = 1;
+        m_is_running = true;
         return true;
+    }else{
+        ROS_INFO("Empty mission guide gived");
+        m_is_running = false;
+        m_mode = 0;
+        m_mission_id = "";
+        m_mission_points = std::vector<geographic_msgs::GeoPoint>();
+        setMode("BRAKE");
+        return false;   
     }
-    ROS_INFO("Empty mission guide gived");
-    m_is_running = false;
-    m_mode = 0;
-    m_mission_id = "";
-    m_mission_points = std::vector<geographic_msgs::GeoPoint>();
-    return false;
 }
 
 void MiradorDriver::latLongToUtm(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PointStamped& utm_point)
@@ -582,6 +596,9 @@ bool MiradorDriver::getTargetPose(const geographic_msgs::GeoPoint& _geo_point, g
 }
 
 bool MiradorDriver::startGoGeoPose() {
+    // Clear wp charged in the autopilot (can't do it in auto mode)
+    setMode("GUIDED");
+    clearWP();
 
     if(m_flight_status == 0){
     }
@@ -604,8 +621,8 @@ bool MiradorDriver::startGoGeoPose() {
     
     }
 
-        mavros_msgs::WaypointPush::Request req;
-        mavros_msgs::WaypointPush::Response resp;
+    mavros_msgs::WaypointPush::Request req;
+    mavros_msgs::WaypointPush::Response resp;
 
     req.start_index = 0;
     req.waypoints = m_mavros_wp;
