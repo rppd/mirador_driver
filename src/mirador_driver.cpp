@@ -67,10 +67,21 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n)
         //Mavros services
     m_wpClearService = n.serviceClient<mavros_msgs::WaypointClear>("/mavros/mission/clear");
     m_wpPushService = n.serviceClient<mavros_msgs::WaypointPush>("/mavros/mission/push");
-    m_takeOffLandService = n.serviceClient<mavros_msgs::CommandTOL>("mavros/cmd/takeoff");
-    m_flightModeService = n.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
-    m_armService = n.serviceClient<mavros_msgs::CommandBool>("mavros/cmd/arming");
+    m_takeOffLandService = n.serviceClient<mavros_msgs::CommandTOL>("/mavros/cmd/takeoff");
+    m_flightModeService = n.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
+    m_armService = n.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
+    m_streamRateService = n.serviceClient<mavros_msgs::StreamRate>("/mavros/set_stream");
 
+    //Launch RosService to set the stream at a 10Hz 
+    mavros_msgs::StreamRate::Request req_sr;
+    mavros_msgs::StreamRate::Response resp_sr;
+    
+    req_sr.stream_id = 0;
+    req_sr.message_rate = 10;
+    req_sr.on_off = true;
+
+    // Call stream rate
+    m_streamRateService.call(req_sr,resp_sr);
 
     // Variables init
     status_tab[3] = 0;

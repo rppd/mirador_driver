@@ -46,10 +46,10 @@
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/WaypointReached.h>
-
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/CommandHome.h>
 #include <mavros_msgs/Waypoint.h>
+#include <mavros_msgs/StreamRate.h>
 
 
 // Geographic Lib
@@ -164,6 +164,7 @@ class MiradorDriver
         ros::ServiceClient m_takeOffLandService;
         ros::ServiceClient m_flightModeService;
         ros::ServiceClient m_armService;
+        ros::ServiceClient m_streamRateService;
         
         // tf Listener
         tf2_ros::Buffer m_tf2_buffer;
