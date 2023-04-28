@@ -12,14 +12,24 @@ Clone this repository:
 git clone https://github.com/julesberhault/mirador_driver.git
 ```
 
-### Compiling
+### Prerequisite
 
 First, you need [**ROS environment**](http://wiki.ros.org/fr/ROS/Installation) distro if not already installed.
+
+Install dependencies:
+
+```bash
+sudo apt update
+sudo apt-get install -y ros-noetic-geographic-msgs ros-move-base-msgs
+sudo apt-get install -y libgeographic-dev geographiclib-tools
+```
+
+### Compiling
 
 Compile package:
 
 ```bash
-catkin_make mirador_driver
+catkin build mirador_driver
 ```
 
 ### Running
