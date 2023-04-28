@@ -14,5 +14,5 @@ flight_status_topic: "/flight_status"
 camera_elevation_topic: "/camera_elevation"
 camera_zoom_topic: "/camera_zoom"
 e_stop_topic: "/e_stop"
-stream_method: 0 # 0 for URL video stream method, 1 for WebRTC method
-m_stream_address: [] # Specify stream URL address in case of stream method 0. Parameter stream_method must be 0
+stream_method: 0 # 0 for URL video stream method, 1 for WebRTC method, 2 fot ROS topic
+stream_address: [] # Specify stream URL address in case of stream method (stream_method=0). SPecify topic address in case of ROS topic method (stream_method=2)

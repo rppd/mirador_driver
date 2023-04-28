@@ -7,9 +7,11 @@ uint8 LANDED=0
 uint8 TAKING_OFF=1
 uint8 FLYING=2
 uint8 LANDING=3
+uint8 HOVERING=4
 
 uint8 URL=0
 uint8 WEB_RTC=1
+uint8 ROS_TOPIC=2
 
 uint8 signal_quality
 mirador_driver/GeoPose pose
