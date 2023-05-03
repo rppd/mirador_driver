@@ -55,8 +55,8 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n) : m_goGeoPoseClient("anafi_base
     // Publishers
     m_statusPublisher = n.advertise<mirador_driver::Status>("/mirador/status", 10);
     m_abortPublisher = n.advertise<std_msgs::Empty>("/mirador/abort", 10);
-    m_cmdVelPublisher = n.advertise<geometry_msgs::Twist>("control/cmd_vel", 10);
-    m_takeOffLandPublisher = n.advertise<std_msgs::Bool>("hmi/cmd_TOL", 10);
+    m_cmdVelPublisher = n.advertise<geometry_msgs::Twist>("mirador/cmd_vel", 10);
+    m_takeOffLandPublisher = n.advertise<std_msgs::Bool>("mirador/cmd_TOL", 10);
 
     // Services
     m_convertGPSToPathClient = n.serviceClient<mirador_driver::ConvertGPSToPath>("boustrophedon_gps");

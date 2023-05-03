@@ -11,8 +11,8 @@ use_odometry: false # Specify if you prefer imu or odometry compass for yaw info
 imu_topic: "/imu"
 odometry_topic: "/odometry"
 flight_status_topic: "/fly_status"
-camera_elevation_topic: "/control/cmd_cam"
-camera_zoom_topic: "/control/cmd_zoom"
+camera_elevation_topic: "/mirador/cmd_cam"
+camera_zoom_topic: "/mirador/cmd_zoom"
 e_stop_topic: "/e_stop"
 stream_method: 2 # 0 for URL video stream method, 1 for WebRTC method, 2 for ROS topic
 stream_address: [] # Specify stream URL address in case of stream method 0. Parameter stream_method must be 0
