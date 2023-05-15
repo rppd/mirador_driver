@@ -40,18 +40,6 @@
 #include "mirador_driver/ConvertGPSToPath.h"
 #include "mirador_driver/GoGeoPoseAction.h"
 
-// Mavros messages
-#include <mavros_msgs/WaypointClear.h>
-#include <mavros_msgs/WaypointPush.h>
-#include <mavros_msgs/CommandTOL.h>
-#include <mavros_msgs/SetMode.h>
-#include <mavros_msgs/CommandBool.h>
-#include <mavros_msgs/WaypointReached.h>
-#include <mavros_msgs/State.h>
-#include <mavros_msgs/CommandHome.h>
-#include <mavros_msgs/Waypoint.h>
-#include <mavros_msgs/StreamRate.h>
-#include <mavros_msgs/PositionTarget.h>
 
 
 // Geographic Lib
@@ -65,99 +53,31 @@ class MiradorDriver
 
         // -------------------- Callbacks --------------------
 
-        // Message containing mission sent from Mirador HMI
-        void missionCallback(const mirador_driver::Mission& _mission);
-        // Message containing mission report sent from anyone
-        void reportCallback(const mirador_driver::Report& _report);
-        // Generate boustrophedon trajetctory(input: Geopose Area, output: Geopose path)
-        std::vector<geographic_msgs::GeoPoint> boustrophedonGeneration(std::vector<geographic_msgs::GeoPoint> _points);
-        // Build next goal and init waypoint following
-        void launchMissionCallback(const std_msgs::Empty& _empty);
-        // Stop mission and reset parameters
-        void abortMissionCallback(const std_msgs::Empty& _empty);
-
         void pingCallback(const std_msgs::Float64& _delay);
 
-        void stateOfChargeCallback(const sensor_msgs::BatteryState& _soc);
-
         void navSatFixCallback(const sensor_msgs::NavSatFix& _navsatfix);
-
-        void relAltCallback(const std_msgs::Float64& _relalt);
-
-        void imuCallback(const sensor_msgs::Imu& _imu);
-
-        void odometryCallback(const nav_msgs::Odometry& _odometry);
-
-        void flightStatusCallback(const mavros_msgs::State& _flight_status);
-
-        void cameraElevationCallback(const std_msgs::Float32& _camera_elevation);
-
-        void cameraZoomCallback(const std_msgs::Int8&  _camera_zoom);
-
-        void eStopCallback(const std_msgs::Bool& _e_stop);
-
-        void missionContextCallback(const mirador_driver::MissionContext& _mission_context);
-
-        void waypointReachedCallback(const mavros_msgs::WaypointReached& _waypoint_reached);
-
-        void takeOffLandCallback(const std_msgs::Bool& _tol);
-
-        void setRTHCallback(const std_msgs::Empty& _empty);
-
-        void reachRTHCallback(const std_msgs::Empty& _empty);
 
         void cmdVelCallback(const geometry_msgs::Twist& _cmd_vel);
 
         // -------------------- Functions --------------------
 
-        // Perform guide mode: Go strait to the point, stop when range is acceptable
-        bool setGuide();
-        // Build next goal on the list and set it, "first" flag specify the goal setted is the first in the queue
-        // bool setNextGoal(const bool& _first);
-        // Start action move base goal with the specified target pose
-        // bool startGoGeoPose(const geometry_msgs::PoseStamped& _target_pose);
-        bool startGoGeoPose();
-
-        //Clear previous waypoints, used before any call of waypoint push
-        bool clearWP();
-
-        //Change the flight mode of the drone
-        bool setMode(const std::string _flight_mode);
-
         // Simply publish Mirador status message
         void publishStatus();
         
-        bool getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose);
 
         void latLongToUtm(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PointStamped& utm_point);
         
         void utmToLatLong(const geometry_msgs::PointStamped& _utm_point, geographic_msgs::GeoPoint& geo_point);
 
-        bool utmToOdom(const geometry_msgs::PointStamped& _utm_point, geometry_msgs::PointStamped& odom_point);
-
-        bool odomToUtm(const geometry_msgs::PointStamped& _odom_point, geometry_msgs::PointStamped& utm_point);
+        void updateYaw(geometry_msgs::PointStamped& m_point_new);
 
     private:
         // Subscribers
-        ros::Subscriber m_missionSubscriber;
-        ros::Subscriber m_reportSubscriber;
-        ros::Subscriber m_abortMissionSubscriber;
-        ros::Subscriber m_launchMissionSubscriber;
         ros::Subscriber m_pingSubscriber;
-        ros::Subscriber m_stateOfChargeSubscriber;
         ros::Subscriber m_navsatfixSubscriber;
         ros::Subscriber m_relaltSubscriber;
         ros::Subscriber m_imuSubscriber;
         ros::Subscriber m_odometrySubscriber;
-        ros::Subscriber m_flightStatusSubscriber;
-        ros::Subscriber m_cameraElevationSubscriber;
-        ros::Subscriber m_cameraZoomSubscriber;
-        ros::Subscriber m_eStopSubscriber;
-        ros::Subscriber m_mission_contextSubscriber;
-        ros::Subscriber m_waypointReachedSubscriber;
-        ros::Subscriber m_takeOffLandSubscriber;
-        ros::Subscriber m_setRTHSubscriber;
-        ros::Subscriber m_reachRTHSubscriber;
         ros::Subscriber m_cmdVelSubscriber;
         
         // Publishers
@@ -209,7 +129,6 @@ class MiradorDriver
         bool m_is_north_hemisphere;
         bool m_is_running;
         std::vector<geographic_msgs::GeoPoint> m_mission_points;
-        std::vector<mavros_msgs::Waypoint> m_mavros_wp;
         std::string m_mission_id;
         std::string m_state_mode;
         mirador_driver::Report m_report;
@@ -218,6 +137,8 @@ class MiradorDriver
         int m_state_of_charge;
         ros::Time m_last_time;
         geographic_msgs::GeoPoint m_position;
+        geometry_msgs::PointStamped m_point;
+        geometry_msgs::PointStamped m_point_new;
         double m_heading;
         double m_yaw;
         bool m_publish_cmd_vel;
@@ -227,7 +148,5 @@ class MiradorDriver
         float m_camera_elevation;
         int m_camera_zoom;
         bool m_e_stop;
-        mavros_msgs::Waypoint empty_wp;
         mirador_driver::MissionContext m_mission_context;
-        mavros_msgs::PositionTarget position_target;
 };
