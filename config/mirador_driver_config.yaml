@@ -6,7 +6,7 @@ odom_frame_id: "odom"
 base_link_frame_id: "base_link"
 ping_topic: "/ping" # Topic of the ping or delay value in order to estimate signal quality
 state_of_charge_topic: "/battery"
-navsatfix_topic: "/gps/fix"
+navsatfix_topic: "/fix"
 relalt_topic: "/rel_alt"
 use_odometry: false # Specify if you prefer imu or odometry compass for yaw information.
 imu_topic: "/imu/data"
