@@ -38,6 +38,8 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n)
     m_e_stop = false;
     m_tol = std_msgs::Bool();
     m_mission_context = mirador_driver::MissionContext();
+    m_gps_count = 0;
+    m_gps_dist_thresh = 4;
 
     ros::Time::init();
 };
@@ -116,15 +118,39 @@ void MiradorDriver::utmToLatLong(const geometry_msgs::PointStamped& _utm_point, 
 void MiradorDriver::updateYaw(geometry_msgs::PointStamped& m_point_new)
 { 
     //Calcul du cap GPS
-    if(m_point != geometry_msgs::PointStamped()){
-        double x_delta = m_point_new.point.x - m_point.point.x;
-        double y_delta = m_point_new.point.y - m_point.point.y;
+    m_gps_points[(m_gps_count%5)] = m_point_new;
+
+    if(m_point != geometry_msgs::PointStamped() && (m_gps_count > 4)){
+
+        double x_mean;
+        double y_mean;
+
+        //Mean on all the array values
+        for (int i=0 ; i<sizeof(m_gps_points) ; i++){
+            x_mean += m_gps_points[i].point.x;
+            y_mean += m_gps_points[i].point.y;
+        }
+        x_mean /= sizeof(m_gps_points);
+        y_mean /= sizeof(m_gps_points);
+
+        ROS_INFO("x_mean: %f", x_mean);
+        ROS_INFO("y_mean: %f", y_mean);
+
+        //Calculate the différence between the previous and the current pose
+        double x_delta = x_mean - m_point.point.x;
+        double y_delta = y_mean - m_point.point.y;
         
         m_heading = 90 + atan2(y_delta,x_delta)*180/M_PI;
 
         ROS_INFO("angle: %f", m_heading);
 
+        //MAJ du nouveau point
+        m_gps_count++;
+        //Update the point is it passes the threshold
+        if (sqrt(pow(x_delta,2)+pow(y_delta,2)) > m_gps_dist_thresh){
+            m_point = m_point_new;
+        }
+        
     }
-    //MAJ du nouveau point
-    m_point = m_point_new;
+    
 }

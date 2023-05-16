@@ -129,6 +129,7 @@ class MiradorDriver
         bool m_is_north_hemisphere;
         bool m_is_running;
         std::vector<geographic_msgs::GeoPoint> m_mission_points;
+        geometry_msgs::PointStamped m_gps_points[5];
         std::string m_mission_id;
         std::string m_state_mode;
         mirador_driver::Report m_report;
@@ -149,4 +150,6 @@ class MiradorDriver
         int m_camera_zoom;
         bool m_e_stop;
         mirador_driver::MissionContext m_mission_context;
+        int m_gps_count;
+        float m_gps_dist_thresh;
 };

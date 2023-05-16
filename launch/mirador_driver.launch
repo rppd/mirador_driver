@@ -5,16 +5,12 @@
         <rosparam command="load" file="$(find mirador_driver)/config/mirador_driver_config.yaml" />
     </node>
 
-    
-    <!-- <include file="$(find boustrophedon_server)/launch/boustrophedon_server.launch" />-->
 
-    <!-- Boustrophedon generator Actionlib client -->
-    <!-- <node name="boustrophedon_client" pkg="boustrophedon_server" type="boustrophedon_planner_client" output="screen"/>-->
+    <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
 
-    <!--<node pkg="rosping" type="rosping" name="rosping" args="147.250.35.110">
-        <rosparam command="load" file="$(find mirador_driver)/config/rosping_config.yaml" />
-        <remap from="ping/delay" to="ping"/>
-    </node>-->
+    <node name="nmea_serial_driver_node" pkg="nmea_navsat_driver" type="nmea_serial_driver" output="screen">
+        <param name="port" value="/dev/ttyGPS"/>
+        <param name="baud" value="115200" />
+    </node>
 
-    <!-- <node pkg="topic_tools" type="relay_field" name="state_of_charge_relayer" args="/status /state_of_charge std_msgs/Float32  '{data: m.charge_estimate}' "/> -->
 </launch>
