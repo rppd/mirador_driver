@@ -5,12 +5,12 @@
         <rosparam command="load" file="$(find mirador_driver)/config/mirador_driver_config.yaml" />
     </node>
 
-
     <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
-
+    <!--
     <node name="nmea_serial_driver_node" pkg="nmea_navsat_driver" type="nmea_serial_driver" output="screen">
         <param name="port" value="/dev/ttyGPS"/>
         <param name="baud" value="115200" />
     </node>
-
+    -->
+    <include file="$(find nmea_navsat_driver)/launch/nmea_serial_driver.launch" />
 </launch>

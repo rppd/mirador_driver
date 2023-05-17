@@ -137,7 +137,8 @@ class MiradorDriver
         int m_signal_quality;
         int m_state_of_charge;
         ros::Time m_last_time;
-        geographic_msgs::GeoPoint m_position;
+        geographic_msgs::GeoPoint m_geopoint;
+        geographic_msgs::GeoPoint m_geopoint_new;
         geometry_msgs::PointStamped m_point;
         geometry_msgs::PointStamped m_point_new;
         double m_heading;

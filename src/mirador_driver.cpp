@@ -24,7 +24,8 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n)
     m_sequence = 0;
     m_signal_quality = 0;
     m_is_running = false;
-    m_position = geographic_msgs::GeoPoint();
+    m_geopoint = geographic_msgs::GeoPoint();
+    m_geopoint_new = geographic_msgs::GeoPoint();
     m_heading = .0;
     m_yaw = .0;
     m_publish_cmd_vel = false;
@@ -39,7 +40,8 @@ MiradorDriver::MiradorDriver(ros::NodeHandle& n)
     m_tol = std_msgs::Bool();
     m_mission_context = mirador_driver::MissionContext();
     m_gps_count = 0;
-    m_gps_dist_thresh = 4;
+    m_gps_dist_thresh = 1;
+
 
     ros::Time::init();
 };
@@ -57,11 +59,14 @@ void MiradorDriver::pingCallback(const std_msgs::Float64& _delay)
 
 void MiradorDriver::navSatFixCallback(const sensor_msgs::NavSatFix& _navsatfix)
 { 
-    m_position.latitude = _navsatfix.latitude;
-    m_position.longitude = _navsatfix.longitude;
-    m_position.altitude = _navsatfix.altitude;
-    latLongToUtm(m_position, m_point_new);
+    ROS_INFO("new gps");
+    m_geopoint.latitude = _navsatfix.latitude;
+    m_geopoint.longitude = _navsatfix.longitude;
+    m_geopoint.altitude = _navsatfix.altitude;
+    latLongToUtm(m_geopoint, m_point_new);
     updateYaw(m_point_new);
+    
+    
 }
 
 // -------------------- Publishers --------------------
@@ -71,9 +76,9 @@ void MiradorDriver::publishStatus()
     mirador_driver::Status status;
 
     status.signal_quality = m_signal_quality;
-    status.pose.latitude = m_position.latitude;
-    status.pose.longitude = m_position.longitude;
-    status.pose.altitude = m_position.altitude;
+    status.pose.latitude = m_geopoint_new.latitude;
+    status.pose.longitude = m_geopoint_new.longitude;
+    status.pose.altitude = m_geopoint_new.altitude;
     status.pose.heading = m_heading;
     status.mode = m_mode;
     status.mission.id = m_mission_id;
@@ -108,7 +113,7 @@ void MiradorDriver::latLongToUtm(const geographic_msgs::GeoPoint& _geo_point, ge
 
 void MiradorDriver::utmToLatLong(const geometry_msgs::PointStamped& _utm_point, geographic_msgs::GeoPoint& geo_point)
 {
-    GeographicLib::UTMUPS::Reverse(m_utm_zone, m_is_north_hemisphere, _utm_point.point.x, _utm_point.point.y, geo_point.latitude, geo_point.longitude);
+    GeographicLib::UTMUPS::Reverse(31, true, _utm_point.point.x, _utm_point.point.y, geo_point.latitude, geo_point.longitude);
     if (m_is_zero_altitude)
     {
         geo_point.altitude = _utm_point.point.z;
@@ -119,38 +124,41 @@ void MiradorDriver::updateYaw(geometry_msgs::PointStamped& m_point_new)
 { 
     //Calcul du cap GPS
     m_gps_points[(m_gps_count%5)] = m_point_new;
-
-    if(m_point != geometry_msgs::PointStamped() && (m_gps_count > 4)){
+    //ROS_INFO("1");
+    if((m_point_new.point.x != 0) && (m_gps_count > 4)){
 
         double x_mean;
         double y_mean;
-
+        //ROS_INFO("2");
         //Mean on all the array values
-        for (int i=0 ; i<sizeof(m_gps_points) ; i++){
+        for (int i=0 ; i<5; i++){
             x_mean += m_gps_points[i].point.x;
             y_mean += m_gps_points[i].point.y;
         }
-        x_mean /= sizeof(m_gps_points);
-        y_mean /= sizeof(m_gps_points);
+        x_mean /= 5;
+        y_mean /= 5;
 
-        ROS_INFO("x_mean: %f", x_mean);
-        ROS_INFO("y_mean: %f", y_mean);
+        //ROS_INFO("x_mean: %f", x_mean);
+        //ROS_INFO("y_mean: %f", y_mean);
 
         //Calculate the différence between the previous and the current pose
         double x_delta = x_mean - m_point.point.x;
         double y_delta = y_mean - m_point.point.y;
         
-        m_heading = 90 + atan2(y_delta,x_delta)*180/M_PI;
-
-        ROS_INFO("angle: %f", m_heading);
-
-        //MAJ du nouveau point
-        m_gps_count++;
-        //Update the point is it passes the threshold
+        //Update the point and yaw is it passes a distance threshold
         if (sqrt(pow(x_delta,2)+pow(y_delta,2)) > m_gps_dist_thresh){
-            m_point = m_point_new;
+
+            m_heading = 90 - atan2(y_delta,x_delta)*180/M_PI;
+
+            ROS_INFO("angle: %f", m_heading);
+
+            m_point.point.x = x_mean;
+            m_point.point.y = y_mean;
+            utmToLatLong(m_point_new, m_geopoint_new);
         }
         
     }
+    //MAJ du nouveau point
+    m_gps_count++;
     
 }
