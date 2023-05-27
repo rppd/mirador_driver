@@ -9,7 +9,7 @@ state_of_charge_topic: "/state_of_charge"
 navsatfix_topic: "/imu/gps/filtered"
 use_odometry: false # Specify if you prefer imu or odometry compass for yaw information.
 imu_topic: "/imu/data"
-odometry_topic: "/odometry"
+odometry_topic: "/odometry/filtered"
 flight_status_topic: "/flight_status"
 camera_elevation_topic: "/camera_elevation"
 camera_zoom_topic: "/camera_zoom"
