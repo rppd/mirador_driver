@@ -2,37 +2,104 @@
 
 #include "config.h"
 #include "robot.h"
+#include "logger.h"
 
-MiradorDriver::MiradorDriver(ros::NodeHandle& handle): moveBaseClient("move_base", true), robot(config) {
-    // Subscribers
-    missionSubscriber           = handle.subscribe("/mirador/mission", 10, &MiradorDriver::missionCallback, this);
-    launchMissionSubscriber     = handle.subscribe("/mirador/launch", 10, &MiradorDriver::launchMissionCallback, this);
-    abortMissionSubscriber      = handle.subscribe("/mirador/abort", 10, &MiradorDriver::abortMissionCallback, this);
-    reportSubscriber            = handle.subscribe("/mirador/report", 10, &MiradorDriver::reportCallback, this);
-    pingSubscriber              = handle.subscribe(config.ping_topic, 10, &MiradorDriver::pingCallback, this);
-    stateOfChargeSubscriber     = handle.subscribe(config.state_of_charge_topic, 10, &MiradorDriver::stateOfChargeCallback, this);
-    navsatfixSubscriber         = handle.subscribe(config.navsatfix_topic, 10, &MiradorDriver::navSatFixCallback, this);
+MiradorDriver::MiradorDriver(ros::NodeHandle& handle): config(), robot(config) {
+        // Subscribers
+        missionSubscriber           = handle.subscribe("/mirador/mission", 10, &MiradorDriver::missionCallback, this);
+        launchMissionSubscriber     = handle.subscribe("/mirador/launch", 10, &MiradorDriver::launchMissionCallback, this);
+        abortMissionSubscriber      = handle.subscribe("/mirador/abort", 10, &MiradorDriver::abortMissionCallback, this);
+        reportSubscriber            = handle.subscribe("/mirador/report", 10, &MiradorDriver::reportCallback, this);
+        pingSubscriber              = handle.subscribe(config.ping_topic, 10, &MiradorDriver::pingCallback, this);
+        stateOfChargeSubscriber     = handle.subscribe(config.state_of_charge_topic, 10, &MiradorDriver::stateOfChargeCallback, this);
+        navsatfixSubscriber         = handle.subscribe(config.navsatfix_topic, 10, &MiradorDriver::navSatFixCallback, this);
 
-    if (config.use_odometry) 
-        odometrySubscriber      = handle.subscribe(config.odometry_topic, 10, &MiradorDriver::odometryCallback, this);
-    else 
-        imuSubscriber           = handle.subscribe(config.imu_topic, 10, &MiradorDriver::imuCallback, this);
+        if (config.use_odometry) 
+            odometrySubscriber      = handle.subscribe(config.odometry_topic, 10, &MiradorDriver::odometryCallback, this);
+        else 
+            imuSubscriber           = handle.subscribe(config.imu_topic, 10, &MiradorDriver::imuCallback, this);
 
-    flightStatusSubscriber      = handle.subscribe(config.flight_status_topic, 10, &MiradorDriver::flightStatusCallback, this);
-    cameraElevationSubscriber   = handle.subscribe(config.camera_elevation_topic, 10, &MiradorDriver::cameraElevationCallback, this);
-    cameraZoomSubscriber        = handle.subscribe(config.camera_zoom_topic, 10, &MiradorDriver::cameraZoomCallback, this);
-    eStopSubscriber             = handle.subscribe(config.e_stop_topic, 10, &MiradorDriver::eStopCallback, this);
-    mission_contextSubscriber   = handle.subscribe(config.mission_context_topic, 10, &MiradorDriver::missionContextCallback, this);
+        flightStatusSubscriber      = handle.subscribe(config.flight_status_topic, 10, &MiradorDriver::flightStatusCallback, this);
+        cameraElevationSubscriber   = handle.subscribe(config.camera_elevation_topic, 10, &MiradorDriver::cameraElevationCallback, this);
+        cameraZoomSubscriber        = handle.subscribe(config.camera_zoom_topic, 10, &MiradorDriver::cameraZoomCallback, this);
+        eStopSubscriber             = handle.subscribe(config.e_stop_topic, 10, &MiradorDriver::eStopCallback, this);
+        mission_contextSubscriber   = handle.subscribe(config.mission_context_topic, 10, &MiradorDriver::missionContextCallback, this);
 
-    // Publishers
-    statusPublisher = handle.advertise<mirador_driver::Status>("/mirador/status", 10);
-    cmdVelPublisher = handle.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
-
-}
+        // Publishers
+        statusPublisher  = handle.advertise<mirador_driver::Status>("/mirador/status", 10);
+        cmdVelPublisher  = handle.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
+        
+        Logger::setTopic(handle, config.warning_topic);
+    }
 
 void MiradorDriver::reportCallback(const mirador_driver::Report& _report)
 {
     //
+}
+
+void MiradorDriver::missionCallback(const mirador_driver::Mission& _mission)
+{
+    if (robot.position.latitude != 0 && robot.position.longitude != 0)
+    {
+        if (_mission.type == 1 && (robot.mode == 0 || robot.mode == 1))
+        {
+            Logger::info("Guide mission received");
+            robot.mode = _mission.type;
+            robot.mission.id = _mission.id;
+            robot.mission.points = _mission.points;
+
+            robot.is_running = true;
+            Logger::info("Guide mission launched");
+            setGuide();
+        }
+        else if (robot.mode == 0)
+        {
+            switch (_mission.type) {
+                case 2 :
+                    Logger::info("Route mission received");
+                    robot.mode = _mission.type;
+                    robot.mission.id = _mission.id;
+                    robot.mission.points = _mission.points;
+                    break;
+                case 3 :
+                    Logger::info("Exploration mission received");
+                    robot.mode = _mission.type;
+                    robot.mission.id = _mission.id;
+                    robot.mission.points = _mission.points;
+                    break;
+                default :
+                    Logger::warn("Unknown mission type");
+            }
+        }
+    }
+    else {
+        Logger::warn("No GPS signal, impossible to perform mission");
+    }
+}
+
+void MiradorDriver::abortMissionCallback(const std_msgs::Empty& _empty)
+{
+    switch (robot.mode) {
+        case 1 :
+            robot.resetMission();
+            robot.publish_cmd_vel = false;
+            Logger::info("Guide mission aborted");
+            break;
+        case 2 :
+            try
+            {
+                robot.resetMission();
+                robot.moveBaseClient.cancelGoal();
+                Logger::info("Route mission aborted");
+            }
+            catch (tf2::TransformException& ex)
+            {
+                Logger::warn(ex.what());
+            }
+            break;
+        default :
+            Logger::warn("No mission to abort");
+    }
 }
 
 void MiradorDriver::launchMissionCallback(const std_msgs::Empty& _empty)
@@ -162,11 +229,11 @@ void MiradorDriver::publishCmdVel()
             if (robot.makeCmdVel(cmd_vel_twist)) {
                 cmdVelPublisher.publish(cmd_vel_twist);
             } else {
-                ROS_INFO("Guide reached");
+                Logger::info("Guide reached");
             }
         }
         else {
-            ROS_WARN("No signal, can't guide robot safely (Host is unreachable by ping command)");
+            Logger::warn("No signal, can't guide robot safely (Host is unreachable by ping command)");
         }
     }
 }
@@ -174,125 +241,31 @@ void MiradorDriver::publishCmdVel()
 void MiradorDriver::processMoveBaseGoal() {
     if (robot.is_running && robot.mode == 2)
     {
-        if (moveBaseClient.waitForResult(ros::Duration(0.5))) {
-            actionlib::SimpleClientGoalState state = moveBaseClient.getState();
+        if (robot.moveBaseClient.waitForResult(ros::Duration(0.5))) {
+            actionlib::SimpleClientGoalState state = robot.moveBaseClient.getState();
             if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
             {
-                ROS_INFO("Goal reached");
+                Logger::info("Goal reached");
                 robot.setNextGoal(false);
             }
             if (state == actionlib::SimpleClientGoalState::ABORTED || state == actionlib::SimpleClientGoalState::REJECTED || state == actionlib::SimpleClientGoalState::LOST)
             {
-                ROS_WARN("Error mission stopped");
+                Logger::warn("Error mission stopped");
                 robot.resetMission();
             }
         }
     }
 }
 
-bool MiradorDriver::startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose) {
-    int count = 0;
-    while (!moveBaseClient.waitForServer(ros::Duration(1.0)) && count <= 5) {
-        ROS_INFO("Waiting for the move_base action server to come up");
-    }
-
-    move_base_msgs::MoveBaseGoal goal;
-    goal.target_pose = _target_pose;
-
-    ROS_INFO("Sending goal");
-    try
-    {
-        moveBaseClient.sendGoal(goal);
-        ROS_INFO("Goal sent");
-        robot.is_running = true;
-        return true;
-    }
-    catch(const std::exception& e)
-    {
-        ROS_INFO("Failed to send goal");
-        return false;
-    }
-}
-
-bool MiradorDriver::setNextGoal(bool _first)
-{
-    // bool _first = mission;
-    if (_first) {
-        if (robot.mission.points.size() > 0)
-        {
-            ROS_INFO("Setting first goal");
-            geometry_msgs::PoseStamped target_pose;
-            if (!getTargetPose(robot.mission.points.front(), target_pose))
-            {
-                ROS_WARN("Failed to get target pose");
-                return false;
-            }
-            return startMoveBaseGoal(target_pose);
-        }
-        else
-        {
-            ROS_WARN("Empty mission given");
-            robot.resetMission();
-            return false;
-        }
-    }
-    else {
-        if (robot.mission.points.size() > 1)
-        {
-            ROS_INFO("Setting next goal");
-            geometry_msgs::PoseStamped target_pose;
-            
-            if (!getTargetPose(*(robot.mission.points.erase(robot.mission.points.begin())), target_pose))
-            {
-                ROS_WARN("Failed to get target pose");
-                return false;
-            }
-            return startMoveBaseGoal(target_pose);
-        }
-        else
-        {
-            ROS_INFO("Mission finished");
-            robot.resetMission();
-            return false;
-        }
-    }
-}
-   
-
 bool MiradorDriver::setGuide()
 {
     if (robot.mission.points.size() > 0)
     {
-        ROS_INFO("Setting guide");
+        Logger::info("Setting guide");
         robot.publish_cmd_vel = true;
         return true;
     }
-    ROS_INFO("Empty mission guide gived");
+    Logger::info("Empty mission guide gived");
     robot.resetMission();
     return false;
-}
-
-bool MiradorDriver::getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose)
-{
-    tf2_ros::Buffer tf2_buffer;
-    target_pose.header.frame_id = config.odom_frame_id;
-    target_pose.header.stamp = ros::Time(0);
-    geometry_msgs::PointStamped utm_point;
-    robot.latLongToUtm(_geo_point, utm_point);
-    geometry_msgs::PointStamped target_point;
-    if (!robot.utmToOdom(utm_point, target_point))
-    {
-        return false;
-    }
-    target_pose.pose.position.x = target_point.point.x;
-    target_pose.pose.position.y = target_point.point.y;
-    if (!config.is_zero_altitude)
-    {
-        target_pose.pose.position.z = target_point.point.z;
-    }
-    target_pose.pose.orientation.w = 1.0;
-    sequence++;
-    target_pose.header.seq = sequence;
-    ROS_INFO_STREAM("Goal setted to :"<<"\n"<<"    latitude: "<<_geo_point.latitude<<"\n"<<"   longitude: "<<_geo_point.longitude <<"\n"<<"           x: "<<target_pose.pose.position.x <<"\n"<< "           y: "<<target_pose.pose.position.y);
-    return true;
 }

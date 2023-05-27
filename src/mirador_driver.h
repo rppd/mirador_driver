@@ -42,7 +42,6 @@
 #include "config.h"
 #include "robot.h"
 
-typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 class MiradorDriver {
 
@@ -64,12 +63,9 @@ class MiradorDriver {
     ros::Publisher statusPublisher;
     ros::Publisher cmdVelPublisher;
 
-    MoveBaseClient moveBaseClient;
     Robot robot;
     Config config;
-
-    int sequence;
-
+    
     void missionCallback(const mirador_driver::Mission& _mission);
     void reportCallback(const mirador_driver::Report& _report);
     void launchMissionCallback(const std_msgs::Empty& _empty);
@@ -85,18 +81,14 @@ class MiradorDriver {
     void eStopCallback(const std_msgs::Bool& _e_stop);
     void missionContextCallback(const mirador_driver::MissionContext& _mission_context);
 
-    void publishCmdVel();
-    void publishStatus();
-
-    void processMoveBaseGoal();
-    bool startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose);
-    bool setNextGoal(bool _first);
     bool setGuide();
-    bool getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose);
+    
 
 public:
-    Config config;
-    Robot robot;
+    void publishCmdVel();
+    void publishStatus();
+    void processMoveBaseGoal();
 
-    MiradorDriver(ros::NodeHandle& n);
+    MiradorDriver(ros::NodeHandle& handle);
+    
 };

@@ -1,4 +1,5 @@
 #include "mirador_driver.h"
+#include "robot.h"
 
 int main(int argc, char **argv)
 {

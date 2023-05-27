@@ -1,4 +1,5 @@
 #include "robot.h"
+#include "logger.h"
  
 bool Robot::makeCmdVel(geometry_msgs::Twist& cmd_vel_twist) {
     geometry_msgs::PointStamped robot_point;
@@ -46,6 +47,14 @@ bool Robot::makeCmdVel(geometry_msgs::Twist& cmd_vel_twist) {
     }
 }
 
+void Robot::launchMission() {
+        if (mode == 0) Logger::info("No route mission to launch");
+        if (mode == 2) {
+            Logger::info("Route mission launched");
+            setNextGoal(true);
+        }      
+    }
+
 void Robot::resetMission()
 {
     is_running = false;
@@ -85,7 +94,7 @@ bool Robot::utmToOdom(const geometry_msgs::PointStamped& _utm_point, geometry_ms
     {
         if (count >= 5)
         {
-            ROS_WARN("Cannot transform point from utm frame to odom frame");
+            Logger::warn("Cannot transform point from utm frame to odom frame");
             return false;
         }
         try
@@ -97,13 +106,12 @@ bool Robot::utmToOdom(const geometry_msgs::PointStamped& _utm_point, geometry_ms
         }
         catch (tf2::TransformException& ex)
         {
-            ROS_WARN("%s", ex.what());
+            Logger::warn(ex.what());
             ros::Duration(.1).sleep();
         }
     }
     return true;
 }
-
 
 bool Robot::odomToUtm(const geometry_msgs::PointStamped& _odom_point, geometry_msgs::PointStamped& utm_point)
 {
@@ -116,7 +124,7 @@ bool Robot::odomToUtm(const geometry_msgs::PointStamped& _odom_point, geometry_m
     {
         if (count >= 5)
         {
-            ROS_WARN("Cannot transform point from odom frame to utm frame");
+            Logger::warn("Cannot transform point from odom frame to utm frame");
             return false;
         }
         try
@@ -127,10 +135,103 @@ bool Robot::odomToUtm(const geometry_msgs::PointStamped& _odom_point, geometry_m
             wait = false;
         }
         catch (tf2::TransformException &ex) {
-            ROS_WARN("%s",ex.what());
+            Logger::warn(ex.what());
             ros::Duration(.1).sleep();
             continue;
         }
     }
     return true;
+}
+
+bool Robot::setNextGoal(bool _first)
+{
+    // bool _first = mission;
+    if (_first) {
+        if (mission.points.size() > 0)
+        {
+            ROS_INFO("Setting first goal");
+            geometry_msgs::PoseStamped target_pose;
+            if (!getTargetPose(mission.points.front(), target_pose))
+            {
+                Logger::warn("Failed to get target pose");
+                return false;
+            }
+            return startMoveBaseGoal(target_pose);
+        }
+        else
+        {
+            Logger::warn("Empty mission given");
+            resetMission();
+            return false;
+        }
+    }
+    else {
+        if (mission.points.size() > 1)
+        {
+            ROS_INFO("Setting next goal");
+            geometry_msgs::PoseStamped target_pose;
+            
+            if (!getTargetPose(*(mission.points.erase(mission.points.begin())), target_pose))
+            {
+                Logger::warn("Failed to get target pose");
+                return false;
+            }
+            return startMoveBaseGoal(target_pose);
+        }
+        else
+        {
+            ROS_INFO("Mission finished");
+            resetMission();
+            return false;
+        }
+    }
+}
+
+bool Robot::getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose)
+{
+    tf2_ros::Buffer tf2_buffer;
+    target_pose.header.frame_id = config.odom_frame_id;
+    target_pose.header.stamp = ros::Time(0);
+    geometry_msgs::PointStamped utm_point;
+    latLongToUtm(_geo_point, utm_point);
+    geometry_msgs::PointStamped target_point;
+    if (!utmToOdom(utm_point, target_point))
+    {
+        return false;
+    }
+    target_pose.pose.position.x = target_point.point.x;
+    target_pose.pose.position.y = target_point.point.y;
+    if (!config.is_zero_altitude)
+    {
+        target_pose.pose.position.z = target_point.point.z;
+    }
+    target_pose.pose.orientation.w = 1.0;
+    sequence++;
+    target_pose.header.seq = sequence;
+    ROS_INFO_STREAM("Goal setted to :"<<"\n"<<"    latitude: "<<_geo_point.latitude<<"\n"<<"   longitude: "<<_geo_point.longitude <<"\n"<<"           x: "<<target_pose.pose.position.x <<"\n"<< "           y: "<<target_pose.pose.position.y);
+    return true;
+}
+
+bool Robot::startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose) {
+    int count = 0;
+    while (!moveBaseClient.waitForServer(ros::Duration(1.0)) && count <= 5) {
+        Logger::info("Waiting for the move_base action server to come up");
+    }
+
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose = _target_pose;
+
+    Logger::info("Sending goal");
+    try
+    {
+        moveBaseClient.sendGoal(goal);
+        Logger::info("Goal sent");
+        is_running = true;
+        return true;
+    }
+    catch(const std::exception& e)
+    {
+        Logger::info("Failed to send goal");
+        return false;
+    }
 }

@@ -18,6 +18,7 @@ public:
     std::string e_stop_topic;
     std::string stream_topic;
     std::string mission_context_topic;
+    std::string warning_topic;
 
     int stream_method;
     std::vector<std::string> stream_address;
@@ -48,6 +49,8 @@ public:
         handle.param<std::string>("e_stop_topic", e_stop_topic, "/e_stop");
         handle.param<std::string>("stream_topic", stream_topic, "/image/compressed");
         handle.param<std::string>("mission_context_topic", mission_context_topic, "mission/mission_context");
+        handle.param<std::string>("warning_topic", warning_topic, "/mirador/warning");
+
         if (use_odometry) handle.param<std::string>("odometry_topic", odometry_topic, "/odometry");
         else handle.param<std::string>("imu_topic", imu_topic, "/imu");
 

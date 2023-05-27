@@ -67,6 +67,7 @@ add_message_files(
   Report.msg
   StrategicPoint.msg
   MissionContext.msg
+  Warning.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -139,9 +140,9 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-## Declare a C++ library
+#Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/mirador_driver.cpp
+#   src/{PROJECT_NAME}.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -152,8 +153,14 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-file(GLOB MIRADOR_DRIVER_SOURCES src/*)
-add_executable(${PROJECT_NAME} ${MIRADOR_DRIVER_SOURCES})
+#file(GLOB MIRADOR_DRIVER_SOURCES src/*)
+set(${PROJECT_NAME}_SOURCES
+    src/main.cpp
+    src/mirador_driver.cpp
+    src/robot.cpp
+    src/logger.cpp
+    )
+add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SOURCES})
 
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
 ## Rename C++ executable without prefix
