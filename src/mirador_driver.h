@@ -41,44 +41,62 @@
 
 #include "config.h"
 #include "robot.h"
-#include "controller.h"
 
+typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 class MiradorDriver {
+
+    ros::Subscriber missionSubscriber;
+    ros::Subscriber reportSubscriber;
+    ros::Subscriber abortMissionSubscriber;
+    ros::Subscriber launchMissionSubscriber;
+    ros::Subscriber pingSubscriber;
+    ros::Subscriber stateOfChargeSubscriber;
+    ros::Subscriber navsatfixSubscriber;
+    ros::Subscriber imuSubscriber;
+    ros::Subscriber odometrySubscriber;
+    ros::Subscriber flightStatusSubscriber;
+    ros::Subscriber cameraElevationSubscriber;
+    ros::Subscriber cameraZoomSubscriber;
+    ros::Subscriber eStopSubscriber;
+    ros::Subscriber mission_contextSubscriber;
+
+    ros::Publisher statusPublisher;
+    ros::Publisher cmdVelPublisher;
+
+    MoveBaseClient moveBaseClient;
+    Robot robot;
+    Config config;
+
+    int sequence;
+
+    void missionCallback(const mirador_driver::Mission& _mission);
+    void reportCallback(const mirador_driver::Report& _report);
+    void launchMissionCallback(const std_msgs::Empty& _empty);
+    void abortMissionCallback(const std_msgs::Empty& _empty);
+    void pingCallback(const std_msgs::Float64& _delay);
+    void stateOfChargeCallback(const std_msgs::Float32& _soc);
+    void navSatFixCallback(const sensor_msgs::NavSatFix& _navsatfix);
+    void imuCallback(const sensor_msgs::Imu& _imu);
+    void odometryCallback(const nav_msgs::Odometry& _odometry);
+    void flightStatusCallback(const std_msgs::Int8& _flight_status);
+    void cameraElevationCallback(const std_msgs::Float32& _camera_elevation);
+    void cameraZoomCallback(const std_msgs::Int8&  _camera_zoom);
+    void eStopCallback(const std_msgs::Bool& _e_stop);
+    void missionContextCallback(const mirador_driver::MissionContext& _mission_context);
+
+    void publishCmdVel();
+    void publishStatus();
+
+    void processMoveBaseGoal();
+    bool startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose);
+    bool setNextGoal(bool _first);
+    bool setGuide();
+    bool getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose);
 
 public:
     Config config;
     Robot robot;
-    Controller controller;
-
-    static int sequence;
 
     MiradorDriver(ros::NodeHandle& n);
-
-    // -------------------- Functions --------------------
-    // Reset mission flags to default
-    void resetMission();
-    // Perform guide mode: Go strait to the point, stop when range is acceptable
-    bool setGuide();
-    // Build next goal on the list and set it, "first" flag specify the goal setted is the first in the queue
-    bool setNextGoal(const bool& _first);
-    // Start action move base goal with the specified target pose
-    bool startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose);
-    // Simply publish Mirador status message
-    void publishStatus();
-
-    void publishCmdVel();
-
-    void processMoveBaseGoal();
-
-    bool getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose);
-
-    void latLongToUtm(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PointStamped& utm_point);
-
-    void utmToLatLong(const geometry_msgs::PointStamped& _utm_point, geographic_msgs::GeoPoint& geo_point);
-
-    bool utmToOdom(const geometry_msgs::PointStamped& _utm_point, geometry_msgs::PointStamped& odom_point);
-
-    bool odomToUtm(const geometry_msgs::PointStamped& _odom_point, geometry_msgs::PointStamped& utm_point);
-
 };

@@ -74,7 +74,7 @@ void Robot::utmToLatLong(const geometry_msgs::PointStamped& _utm_point, geograph
     }
 }
 
-bool MiradorDriver::utmToOdom(const geometry_msgs::PointStamped& _utm_point, geometry_msgs::PointStamped& odom_point)
+bool Robot::utmToOdom(const geometry_msgs::PointStamped& _utm_point, geometry_msgs::PointStamped& odom_point)
 {
     tf2_ros::Buffer tf2_buffer;
     bool wait = true;
