@@ -229,3 +229,16 @@ bool Controller::setNextGoal(bool _first)
     }
 }
    
+
+bool Controller::setGuide()
+{
+    if (robot.mission.points.size() > 0)
+    {
+        ROS_INFO("Setting guide");
+        robot.publish_cmd_vel = true;
+        return true;
+    }
+    ROS_INFO("Empty mission guide gived");
+    robot.resetMission();
+    return false;
+}
