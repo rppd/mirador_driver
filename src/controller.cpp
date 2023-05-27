@@ -193,7 +193,7 @@ bool Controller::setNextGoal(bool _first)
         {
             ROS_INFO("Setting first goal");
             geometry_msgs::PoseStamped target_pose;
-            if (!MiradorDriver::getTargetPose(robot.mission.points.front(), target_pose))
+            if (!getTargetPose(robot.mission.points.front(), target_pose))
             {
                 ROS_WARN("Failed to get target pose");
                 return false;
@@ -213,7 +213,7 @@ bool Controller::setNextGoal(bool _first)
             ROS_INFO("Setting next goal");
             geometry_msgs::PoseStamped target_pose;
             
-            if (!MiradorDriver::getTargetPose(*(robot.mission.points.erase(robot.mission.points.begin())), target_pose))
+            if (!getTargetPose(*(robot.mission.points.erase(robot.mission.points.begin())), target_pose))
             {
                 ROS_WARN("Failed to get target pose");
                 return false;
