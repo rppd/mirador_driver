@@ -19,38 +19,6 @@ bool MiradorDriver::setGuide()
     return false;
 }
 
-
-
-bool MiradorDriver::odomToUtm(const geometry_msgs::PointStamped& _odom_point, geometry_msgs::PointStamped& utm_point)
-{
-    tf2_ros::Buffer tf2_buffer;
-    bool wait = true;
-    int count = 0;
-    tf2_ros::TransformListener tfListener(tf2_buffer);
-    geometry_msgs::TransformStamped transformStamped;
-    while(wait)
-    {
-        if (count >= 5)
-        {
-            ROS_WARN("Cannot transform point from odom frame to utm frame");
-            return false;
-        }
-        try
-        {
-            count += 1;
-            transformStamped = m_tf2_buffer.lookupTransform(m_utm_frame_id, m_odom_frame_id, ros::Time(0));
-            tf2::doTransform(_odom_point, utm_point, transformStamped);
-            wait = false;
-        }
-        catch (tf2::TransformException &ex) {
-            ROS_WARN("%s",ex.what());
-            ros::Duration(.1).sleep();
-            continue;
-        }
-    }
-    return true;
-}
-
 bool MiradorDriver::getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose)
 {
     tf2_ros::Buffer tf2_buffer;
