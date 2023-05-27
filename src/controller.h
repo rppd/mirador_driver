@@ -32,6 +32,8 @@ class Controller {
     Robot& robot;
     Config& config;
 
+    int sequence;
+
     void missionCallback(const mirador_driver::Mission& _mission);
     void reportCallback(const mirador_driver::Report& _report);
     void launchMissionCallback(const std_msgs::Empty& _empty);
@@ -53,6 +55,9 @@ class Controller {
     void processMoveBaseGoal();
     bool startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose);
     bool setNextGoal(bool _first);
+    bool setGuide();
+    bool getTargetPose(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PoseStamped& target_pose);
+
 
 public:
 
