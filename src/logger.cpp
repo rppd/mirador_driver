@@ -1,9 +1,9 @@
 #include "logger.h"
 
-ros::Publisher Logger::warningPublisher = ros::NodeHandle().advertise<mirador_driver::Warning>("/mirador/warning", 10);
+ros::Publisher Logger::warningPublisher;
 
 void Logger::setTopic(ros::NodeHandle& handle, std::string topic) {
-    Logger::warningPublisher = handle.advertise<mirador_driver::Warning>(topic, 10);
+    warningPublisher = handle.advertise<mirador_driver::Warning>(topic, 10);
 }
 
 void Logger::info(std::string msg) {
@@ -19,5 +19,5 @@ void Logger::warn(std::string msg) {
 void Logger::publishWarnMessage(std::string msg) {
     mirador_driver::Warning warning;
     warning.message = msg;
-    Logger::warningPublisher.publish(warning);
+    warningPublisher.publish(warning);
 }
