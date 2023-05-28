@@ -86,6 +86,7 @@ public:
     bool startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose);
     bool makeCmdVel(geometry_msgs::Twist& cmd_vel_twist);
     void resetMission();
+    bool setGuide();
 
     void latLongToUtm(const geographic_msgs::GeoPoint& _geo_point, geometry_msgs::PointStamped& utm_point);
     void utmToLatLong(const geometry_msgs::PointStamped& _utm_point, geographic_msgs::GeoPoint& geo_point);

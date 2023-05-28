@@ -79,10 +79,7 @@ class MiradorDriver {
     void cameraElevationCallback(const std_msgs::Float32& _camera_elevation);
     void cameraZoomCallback(const std_msgs::Int8&  _camera_zoom);
     void eStopCallback(const std_msgs::Bool& _e_stop);
-    void missionContextCallback(const mirador_driver::MissionContext& _mission_context);
-
-    bool setGuide();
-    
+    void missionContextCallback(const mirador_driver::MissionContext& _mission_context);    
 
 public:
     void publishCmdVel();

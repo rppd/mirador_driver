@@ -235,3 +235,16 @@ bool Robot::startMoveBaseGoal(const geometry_msgs::PoseStamped& _target_pose) {
         return false;
     }
 }
+
+bool Robot::setGuide()
+{
+    if (mission.points.size() > 0)
+    {
+        Logger::info("Setting guide");
+        publish_cmd_vel = true;
+        return true;
+    }
+    Logger::info("Empty mission guide gived");
+    resetMission();
+    return false;
+}

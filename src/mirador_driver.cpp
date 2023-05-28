@@ -50,7 +50,7 @@ void MiradorDriver::missionCallback(const mirador_driver::Mission& _mission)
 
             robot.is_running = true;
             Logger::info("Guide mission launched");
-            setGuide();
+            robot.setGuide();
         }
         else if (robot.mode == 0)
         {
@@ -255,17 +255,4 @@ void MiradorDriver::processMoveBaseGoal() {
             }
         }
     }
-}
-
-bool MiradorDriver::setGuide()
-{
-    if (robot.mission.points.size() > 0)
-    {
-        Logger::info("Setting guide");
-        robot.publish_cmd_vel = true;
-        return true;
-    }
-    Logger::info("Empty mission guide gived");
-    robot.resetMission();
-    return false;
 }
