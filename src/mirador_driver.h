@@ -86,6 +86,9 @@ public:
     void publishStatus();
     void processMoveBaseGoal();
 
+    void sendFakeImuMessage();
+    void fakePing();
+
     MiradorDriver(ros::NodeHandle& handle);
     
 };

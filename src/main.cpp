@@ -21,6 +21,8 @@ int main(int argc, char **argv)
         MiradorDriver.publishStatus();
         MiradorDriver.publishCmdVel();
         MiradorDriver.processMoveBaseGoal();
+        // MiradorDriver.sendFakeImuMessage(); //REMOVE
+        // MiradorDriver.fakePing(); //REMOVE
         r.sleep();
         ros::spinOnce();
     }

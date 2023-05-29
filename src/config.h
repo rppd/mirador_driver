@@ -51,8 +51,10 @@ public:
         handle.param<std::string>("mission_context_topic", mission_context_topic, "mission/mission_context");
         handle.param<std::string>("warning_topic", warning_topic, "/mirador/warning");
 
-        if (use_odometry) handle.param<std::string>("odometry_topic", odometry_topic, "/odometry");
-        else handle.param<std::string>("imu_topic", imu_topic, "/imu");
+        if (use_odometry)
+            handle.param<std::string>("odometry_topic", odometry_topic, "/odometry");
+        else
+            handle.param<std::string>("imu_topic", imu_topic, "/imu");
 
         //video
         handle.param<std::vector<std::string>>("stream_address", stream_address, std::vector<std::string>());
